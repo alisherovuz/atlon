@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Environment / secrets
+.env
+*.env
+!.env.example
+
+# Local database
+*.db
+*.sqlite3
+atlon.db
+
+# Exports
+exports/
+*.xlsx
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
