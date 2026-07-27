@@ -127,6 +127,23 @@ async def show_about(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     )
 
 
+async def chat_id_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Reply with the current chat's id — used to configure city groups.
+
+    Run this inside each city group to get the value for the matching
+    GROUP_* environment variable. Works even with privacy mode on,
+    because Telegram always delivers slash commands to the bot.
+    """
+    chat = update.effective_chat
+    await update.message.reply_text(
+        f"🆔 <b>Chat ID:</b> <code>{chat.id}</code>\n"
+        f"📂 <b>Turi:</b> {chat.type}\n"
+        f"📛 <b>Nomi:</b> {_e(chat.title or chat.full_name)}",
+        parse_mode=ParseMode.HTML,
+    )
+    logger.info("Chat id requested: %s (%s, %s)", chat.id, chat.type, chat.title)
+
+
 # ── Events ───────────────────────────────────────────────────────
 
 async def events_pick_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -177,28 +194,37 @@ async def vol_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
     context.user_data["application"] = {}
-    # Inline keyboards can't be replaced with a reply keyboard on the same
-    # message, so send a fresh message carrying the city reply keyboard.
-    await query.message.reply_text(
+    # The region grid rides along with the intro message as an inline
+    # keyboard, so it doesn't cover the user's typing keyboard.
+    await query.edit_message_text(
         texts.VOL_INTRO,
-        reply_markup=texts.city_reply_keyboard(),
+        reply_markup=texts.volunteer_city_keyboard(),
         parse_mode=ParseMode.HTML,
     )
     return CITY
 
 
 async def vol_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    name = update.message.text.strip()
-    city = config.CITY_BY_NAME.get(name)
+    query = update.callback_query
+    await query.answer()
+    city_key = query.data.split(":", 1)[1]
+    city = config.CITY_BY_KEY.get(city_key)
     if not city:
-        await update.message.reply_text(
-            "❗️ Iltimos, ro‘yxatdagi tugmalardan birini tanlang.",
-            reply_markup=texts.city_reply_keyboard(),
-        )
         return CITY
-    context.user_data["application"]["city"] = city["key"]
-    context.user_data["application"]["city_name"] = city["name"]
-    await update.message.reply_text(texts.VOL_ASK_NAME)
+
+    # Guard against a stale button from an application the user already
+    # finished or cancelled — restart cleanly instead of raising KeyError.
+    app = context.user_data.setdefault("application", {})
+    app["city"] = city["key"]
+    app["city_name"] = city["name"]
+
+    # Freeze the choice into the original message and drop the buttons,
+    # so old messages in the chat can't be tapped again later.
+    await query.edit_message_text(
+        f"📍 <b>Hudud:</b> {html.escape(city['name'])}",
+        parse_mode=ParseMode.HTML,
+    )
+    await query.message.reply_text(texts.VOL_ASK_NAME)
     return NAME
 
 
@@ -285,6 +311,19 @@ async def vol_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return ConversationHandler.END
 
 
+async def vol_cancel_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Cancel from the inline ❌ button on the region picker."""
+    query = update.callback_query
+    await query.answer()
+    context.user_data.pop("application", None)
+    await query.edit_message_text(
+        texts.MENU_TITLE,
+        reply_markup=texts.main_menu_keyboard(),
+        parse_mode=ParseMode.HTML,
+    )
+    return ConversationHandler.END
+
+
 def _e(value) -> str:
     """HTML-escape a dynamic value for safe insertion into HTML messages."""
     if value is None:
@@ -332,7 +371,10 @@ def build_application() -> Application:
     volunteer_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(vol_start, pattern="^volunteer$")],
         states={
-            CITY: [MessageHandler(filters.TEXT & ~filters.COMMAND, vol_city)],
+            CITY: [
+                CallbackQueryHandler(vol_city, pattern="^volcity:"),
+                CallbackQueryHandler(vol_cancel_cb, pattern="^volcancel$"),
+            ],
             NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, vol_name)],
             AGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, vol_age)],
             PHONE: [
@@ -351,6 +393,7 @@ def build_application() -> Application:
     )
 
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("id", chat_id_cmd))
     application.add_handler(volunteer_conv)
     application.add_handler(CallbackQueryHandler(check_subscription, pattern="^check_sub$"))
     application.add_handler(CallbackQueryHandler(show_menu, pattern="^menu$"))
@@ -371,6 +414,20 @@ def main() -> None:
         raise SystemExit(
             "BOT_TOKEN is required. Set it in your environment / Railway variables."
         )
+
+    # Show which city groups are wired up — the most common deploy mistake
+    # is a missing or wrong GROUP_* variable, and this makes it obvious.
+    for city in config.CITIES:
+        chat_id = config.group_chat_id(city["key"])
+        if chat_id:
+            logger.info("GROUP: %-10s → %s", city["name"], chat_id)
+        else:
+            logger.warning(
+                "GROUP: %-10s → not set (%s). Applications for this city "
+                "will not be forwarded anywhere.",
+                city["name"],
+                city["group_env"],
+            )
 
     db.init_db()
     application = build_application()

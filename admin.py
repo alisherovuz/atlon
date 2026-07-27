@@ -29,6 +29,7 @@ from telegram.ext import (
 
 import config
 import db
+import texts
 
 logger = logging.getLogger("atlon-bot.admin")
 
@@ -59,8 +60,8 @@ async def admin_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         return
     await update.message.reply_text(
         "🛠 <b>Admin panel</b>\n\n"
-        "/addevent — yangi tadbir qo‘shish (shahar bo‘yicha bildirishnoma bilan)\n"
-        "/broadcast — hammaga yoki shahar bo‘yicha xabar yuborish\n"
+        "/addevent — yangi tadbir qo‘shish (hudud bo‘yicha bildirishnoma bilan)\n"
+        "/broadcast — hammaga yoki hudud bo‘yicha xabar yuborish\n"
         "/export — arizalarni Excel faylga yuklab olish\n"
         "/stats — statistika\n"
         "/bekor — jarayonni bekor qilish",
@@ -77,7 +78,7 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "📊 <b>Statistika</b>\n",
         f"👥 Foydalanuvchilar: <b>{users}</b>",
         f"📝 Arizalar: <b>{apps}</b>\n",
-        "<b>Shahar bo‘yicha obunachilar:</b>",
+        "<b>Hudud bo‘yicha obunachilar:</b>",
     ]
     for c in config.CITIES:
         n = len(db.user_ids_for_city(c["key"]))
@@ -135,11 +136,11 @@ async def export(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 # ── Add event ────────────────────────────────────────────────────
 
 def _admin_city_keyboard(prefix: str) -> InlineKeyboardMarkup:
-    rows = [
-        [InlineKeyboardButton(c["name"], callback_data=f"{prefix}:{c['key']}")]
+    buttons = [
+        InlineKeyboardButton(c["name"], callback_data=f"{prefix}:{c['key']}")
         for c in config.CITIES
     ]
-    return InlineKeyboardMarkup(rows)
+    return InlineKeyboardMarkup(texts._in_pairs(buttons))
 
 
 async def addevent_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -147,7 +148,7 @@ async def addevent_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return ConversationHandler.END
     context.user_data["new_event"] = {}
     await update.message.reply_text(
-        "🏙 Tadbir qaysi shaharda bo‘ladi?",
+        "🏙 Tadbir qaysi hududda bo‘ladi?",
         reply_markup=_admin_city_keyboard("aecity"),
     )
     return AE_CITY
@@ -160,7 +161,7 @@ async def addevent_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     context.user_data["new_event"]["city"] = city_key
     city = config.CITY_BY_KEY.get(city_key)
     await query.edit_message_text(
-        f"📍 Shahar: <b>{city['name']}</b>\n\nTadbir nomini yozing:",
+        f"📍 Hudud: <b>{city['name']}</b>\n\nTadbir nomini yozing:",
         parse_mode=ParseMode.HTML,
     )
     return AE_TITLE
@@ -220,10 +221,10 @@ async def broadcast_start(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if not await _guard(update):
         return ConversationHandler.END
     rows = [[InlineKeyboardButton("📣 Hammaga", callback_data="bcast:all")]]
-    for c in config.CITIES:
-        rows.append(
-            [InlineKeyboardButton(c["name"], callback_data=f"bcast:{c['key']}")]
-        )
+    rows += texts._in_pairs([
+        InlineKeyboardButton(c["name"], callback_data=f"bcast:{c['key']}")
+        for c in config.CITIES
+    ])
     await update.message.reply_text(
         "📢 Xabarni kimga yuboramiz?", reply_markup=InlineKeyboardMarkup(rows)
     )

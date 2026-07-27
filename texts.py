@@ -59,14 +59,14 @@ ABOUT = (
     "Biz bilan birga o‘s! 🚀"
 )
 
-EVENTS_PICK_CITY = "📍 Tadbirlarni ko‘rish uchun shaharni tanlang:"
-NO_EVENTS = "ℹ️ Hozircha bu shahar uchun tadbirlar mavjud emas. Tez orada qo‘shiladi!"
+EVENTS_PICK_CITY = "📍 Tadbirlarni ko‘rish uchun hududni tanlang:"
+NO_EVENTS = "ℹ️ Hozircha bu hudud uchun tadbirlar mavjud emas. Tez orada qo‘shiladi!"
 
 VOL_INTRO = (
     "📝 <b>Volontyorlik uchun ariza</b>\n\n"
     "Bir necha savolga javob bering. Istalgan vaqtda /bekor buyrug‘i bilan "
     "bekor qilishingiz mumkin.\n\n"
-    "1️⃣ Avval shahringizni tanlang:"
+    "1️⃣ Avval hududingizni tanlang:"
 )
 VOL_ASK_NAME = "2️⃣ Ism va familiyangizni yozing:"
 VOL_ASK_AGE = "3️⃣ Yoshingizni kiriting (faqat raqam):"
@@ -98,6 +98,7 @@ BTN_ABOUT = "ℹ️ Atlon Group haqida"
 BTN_EVENTS = "📅 Tadbirlar"
 BTN_VOLUNTEER = "🤝 Volontyor bo‘lish"
 BTN_BACK = "⬅️ Orqaga"
+BTN_CANCEL = "❌ Bekor qilish"
 
 # ── Inline keyboards ─────────────────────────────────────────────
 
@@ -125,23 +126,40 @@ def back_to_menu_keyboard() -> InlineKeyboardMarkup:
     )
 
 
-def city_inline_keyboard(prefix: str) -> InlineKeyboardMarkup:
-    """City buttons for browsing (callback_data = '<prefix>:<city_key>')."""
-    rows = [
-        [InlineKeyboardButton(c["name"], callback_data=f"{prefix}:{c['key']}")]
+def _in_pairs(items: list) -> list[list]:
+    """Chunk buttons into rows of two — 14 regions in one column is a lot
+    of scrolling on a phone."""
+    return [items[i:i + 2] for i in range(0, len(items), 2)]
+
+
+def city_inline_keyboard(
+    prefix: str,
+    footer_label: str = BTN_BACK,
+    footer_callback: str = "menu",
+) -> InlineKeyboardMarkup:
+    """City buttons, two per row (callback_data = '<prefix>:<city_key>').
+
+    The footer button is configurable so the same grid can act as
+    "back to menu" while browsing events, and "cancel" inside the
+    volunteer application.
+    """
+    buttons = [
+        InlineKeyboardButton(c["name"], callback_data=f"{prefix}:{c['key']}")
         for c in config.CITIES
     ]
-    rows.append([InlineKeyboardButton(BTN_BACK, callback_data="menu")])
+    rows = _in_pairs(buttons)
+    rows.append([InlineKeyboardButton(footer_label, callback_data=footer_callback)])
     return InlineKeyboardMarkup(rows)
 
 
-# ── Reply keyboards (for the conversation flow) ──────────────────
-
-def city_reply_keyboard() -> ReplyKeyboardMarkup:
-    rows = [[c["name"]] for c in config.CITIES]
-    return ReplyKeyboardMarkup(
-        rows, resize_keyboard=True, one_time_keyboard=True
+def volunteer_city_keyboard() -> InlineKeyboardMarkup:
+    """Region picker shown inline under the volunteer intro message."""
+    return city_inline_keyboard(
+        "volcity", footer_label=BTN_CANCEL, footer_callback="volcancel"
     )
+
+
+# ── Reply keyboards (for the conversation flow) ──────────────────
 
 
 def phone_reply_keyboard() -> ReplyKeyboardMarkup:
