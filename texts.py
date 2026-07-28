@@ -225,12 +225,18 @@ def review_keyboard(reg_id: int) -> InlineKeyboardMarkup:
     )
 
 
+def chunk(items: list, size: int) -> list[list]:
+    """Split a flat list into rows of at most `size` items."""
+    return [items[i : i + size] for i in range(0, len(items), size)]
+
+
 def city_inline_keyboard(prefix: str) -> InlineKeyboardMarkup:
     """City buttons for browsing (callback_data = '<prefix>:<city_key>')."""
-    rows = [
-        [InlineKeyboardButton(c["name"], callback_data=f"{prefix}:{c['key']}")]
+    buttons = [
+        InlineKeyboardButton(c["name"], callback_data=f"{prefix}:{c['key']}")
         for c in config.CITIES
     ]
+    rows = chunk(buttons, config.CITY_COLUMNS)
     rows.append([InlineKeyboardButton(BTN_BACK, callback_data="menu")])
     return InlineKeyboardMarkup(rows)
 
@@ -238,7 +244,7 @@ def city_inline_keyboard(prefix: str) -> InlineKeyboardMarkup:
 # ── Reply keyboards (for the conversation flow) ──────────────────
 
 def city_reply_keyboard() -> ReplyKeyboardMarkup:
-    rows = [[c["name"]] for c in config.CITIES]
+    rows = chunk([c["name"] for c in config.CITIES], config.CITY_COLUMNS)
     return ReplyKeyboardMarkup(
         rows, resize_keyboard=True, one_time_keyboard=True
     )

@@ -178,11 +178,11 @@ async def export(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 # ── Add event ────────────────────────────────────────────────────
 
 def _admin_city_keyboard(prefix: str) -> InlineKeyboardMarkup:
-    rows = [
-        [InlineKeyboardButton(c["name"], callback_data=f"{prefix}:{c['key']}")]
+    buttons = [
+        InlineKeyboardButton(c["name"], callback_data=f"{prefix}:{c['key']}")
         for c in config.CITIES
     ]
-    return InlineKeyboardMarkup(rows)
+    return InlineKeyboardMarkup(texts.chunk(buttons, config.CITY_COLUMNS))
 
 
 async def addevent_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -279,10 +279,13 @@ async def broadcast_start(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if not await _guard(update):
         return ConversationHandler.END
     rows = [[InlineKeyboardButton("📣 Hammaga", callback_data="bcast:all")]]
-    for c in config.CITIES:
-        rows.append(
-            [InlineKeyboardButton(c["name"], callback_data=f"bcast:{c['key']}")]
-        )
+    rows += texts.chunk(
+        [
+            InlineKeyboardButton(c["name"], callback_data=f"bcast:{c['key']}")
+            for c in config.CITIES
+        ],
+        config.CITY_COLUMNS,
+    )
     await update.message.reply_text(
         "📢 Xabarni kimga yuboramiz?", reply_markup=InlineKeyboardMarkup(rows)
     )

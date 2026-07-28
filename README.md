@@ -44,7 +44,7 @@ Postgres (Railway) yoki SQLite (lokal) · openpyxl.
 | `CHANNEL_USERNAME` | Obuna kanali, masalan `@atlongroup` |
 | `CHANNEL_URL` | Ixtiyoriy — tugmadagi havola |
 | `ADMIN_IDS` | Admin Telegram ID lari, vergul bilan (`@userinfobot`) |
-| `GROUP_NAMANGAN` … `GROUP_ANDIJAN` | Har shahar guruhining chat ID si (`-100…`) |
+| `GROUP_*` (14 ta) | Har viloyat guruhining chat ID si (`-100…`) — to‘liq ro‘yxat `.env.example` da |
 | `DATABASE_URL` | Postgres URL (Railwayda avtomatik) |
 
 > Guruh chat ID sini bilish uchun botni guruhga qo‘shing, guruhga bir xabar

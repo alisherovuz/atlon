@@ -53,13 +53,40 @@ ADMIN_IDS: list[int] = _parse_ids(os.getenv("ADMIN_IDS"))
 # `key` is stored in the database and used internally.
 # `name` is the label shown to users (Uzbek).
 # `group_env` is the env var holding that city's Telegram group id.
+# All 14 administrative regions of Uzbekistan (12 viloyat + Qoraqalpog‘iston
+# + Toshkent shahri), listed alphabetically by Uzbek name.
+#
+# NOTE: the five original keys (namangan, fergana, tashkent, samarkand,
+# andijan) and their GROUP_* variable names are kept exactly as they were,
+# so existing Railway variables and rows already stored in the database
+# keep working. Only new regions were added.
 CITIES: list[dict] = [
-    {"key": "namangan", "name": "Namangan", "group_env": "GROUP_NAMANGAN"},
-    {"key": "fergana", "name": "Farg‘ona", "group_env": "GROUP_FERGANA"},
-    {"key": "tashkent", "name": "Toshkent", "group_env": "GROUP_TASHKENT"},
-    {"key": "samarkand", "name": "Samarqand", "group_env": "GROUP_SAMARKAND"},
     {"key": "andijan", "name": "Andijon", "group_env": "GROUP_ANDIJAN"},
+    {"key": "bukhara", "name": "Buxoro", "group_env": "GROUP_BUKHARA"},
+    {"key": "fergana", "name": "Farg‘ona", "group_env": "GROUP_FERGANA"},
+    {"key": "jizzakh", "name": "Jizzax", "group_env": "GROUP_JIZZAKH"},
+    {"key": "namangan", "name": "Namangan", "group_env": "GROUP_NAMANGAN"},
+    {"key": "navoi", "name": "Navoiy", "group_env": "GROUP_NAVOI"},
+    {"key": "kashkadarya", "name": "Qashqadaryo", "group_env": "GROUP_KASHKADARYA"},
+    {
+        "key": "karakalpakstan",
+        "name": "Qoraqalpog‘iston",
+        "group_env": "GROUP_KARAKALPAKSTAN",
+    },
+    {"key": "samarkand", "name": "Samarqand", "group_env": "GROUP_SAMARKAND"},
+    {"key": "syrdarya", "name": "Sirdaryo", "group_env": "GROUP_SYRDARYA"},
+    {"key": "surkhandarya", "name": "Surxondaryo", "group_env": "GROUP_SURKHANDARYA"},
+    {"key": "tashkent", "name": "Toshkent shahri", "group_env": "GROUP_TASHKENT"},
+    {
+        "key": "tashkent_region",
+        "name": "Toshkent viloyati",
+        "group_env": "GROUP_TASHKENT_REGION",
+    },
+    {"key": "khorezm", "name": "Xorazm", "group_env": "GROUP_KHOREZM"},
 ]
+
+# How many region buttons to place per keyboard row.
+CITY_COLUMNS = 2
 
 CITY_BY_KEY: dict[str, dict] = {c["key"]: c for c in CITIES}
 CITY_BY_NAME: dict[str, dict] = {c["name"]: c for c in CITIES}
