@@ -34,7 +34,7 @@ import texts
 logger = logging.getLogger("atlon-bot.admin")
 
 # Conversation states
-AE_CITY, AE_TITLE, AE_DATE, AE_DESC = range(10, 14)
+AE_CITY, AE_TITLE, AE_DATE, AE_DESC, AE_PRICE = range(10, 15)
 BC_TARGET, BC_MSG = range(20, 22)
 
 EXPORT_DIR = "exports"
@@ -60,10 +60,12 @@ async def admin_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         return
     await update.message.reply_text(
         "🛠 <b>Admin panel</b>\n\n"
-        "/addevent — yangi tadbir qo‘shish (hudud bo‘yicha bildirishnoma bilan)\n"
-        "/broadcast — hammaga yoki hudud bo‘yicha xabar yuborish\n"
+        "/addevent — yangi tadbir qo‘shish (shahar bo‘yicha bildirishnoma bilan)\n"
+        "/pending — tekshirilmagan tadbir arizalarini ko‘rish\n"
+        "/broadcast — hammaga yoki shahar bo‘yicha xabar yuborish\n"
         "/export — arizalarni Excel faylga yuklab olish\n"
         "/stats — statistika\n"
+        "/id — chat ID ni bilish\n"
         "/bekor — jarayonni bekor qilish",
         parse_mode=ParseMode.HTML,
     )
@@ -77,8 +79,12 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     lines = [
         "📊 <b>Statistika</b>\n",
         f"👥 Foydalanuvchilar: <b>{users}</b>",
-        f"📝 Arizalar: <b>{apps}</b>\n",
-        "<b>Hudud bo‘yicha obunachilar:</b>",
+        f"🤝 Volontyor arizalari: <b>{apps}</b>",
+        f"🎫 Tadbir arizalari: <b>{db.count_registrations()}</b>",
+        f"   ⏳ kutilmoqda: <b>{db.count_registrations(db.PENDING)}</b>",
+        f"   ✅ tasdiqlangan: <b>{db.count_registrations(db.APPROVED)}</b>",
+        f"   ❌ rad etilgan: <b>{db.count_registrations(db.REJECTED)}</b>\n",
+        "<b>Shahar bo‘yicha obunachilar:</b>",
     ]
     for c in config.CITIES:
         n = len(db.user_ids_for_city(c["key"]))
@@ -119,9 +125,40 @@ async def export(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     for col, width in zip("ABCDEFGHIJ", [6, 17, 24, 6, 16, 14, 24, 40, 16, 14]):
         ws.column_dimensions[col].width = width
 
+    # Second sheet: event registrations.
+    regs = db.all_registrations()
+    events = {e.id: e for e in db.all_events()}
+    ws2 = wb.create_sheet("Tadbir arizalari")
+    ws2.append([
+        "ID", "Sana", "Tadbir", "Shahar", "Ism-familiya", "Yosh",
+        "Telefon", "Holat", "Username", "User ID",
+    ])
+    status_label = {
+        db.PENDING: "Kutilmoqda",
+        db.APPROVED: "Tasdiqlangan",
+        db.REJECTED: "Rad etilgan",
+    }
+    for r in regs:
+        ev = events.get(r.event_id)
+        city = config.CITY_BY_KEY.get(ev.city) if ev else None
+        ws2.append([
+            r.id,
+            r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "",
+            ev.title if ev else f"#{r.event_id}",
+            city["name"] if city else "",
+            r.full_name,
+            r.age,
+            r.phone,
+            status_label.get(r.status, r.status),
+            f"@{r.username}" if r.username else "",
+            r.user_id,
+        ])
+    for col, width in zip("ABCDEFGHIJ", [6, 17, 26, 14, 24, 6, 16, 14, 16, 14]):
+        ws2.column_dimensions[col].width = width
+
     os.makedirs(EXPORT_DIR, exist_ok=True)
     path = os.path.join(
-        EXPORT_DIR, f"volontyorlar_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        EXPORT_DIR, f"atlon_export_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.xlsx"
     )
     wb.save(path)
 
@@ -129,18 +166,21 @@ async def export(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_document(
             document=f,
             filename=os.path.basename(path),
-            caption=f"📄 Jami {len(apps)} ta ariza.",
+            caption=(
+                f"📄 Volontyor arizalari: {len(apps)} ta\n"
+                f"🎫 Tadbir arizalari: {len(regs)} ta"
+            ),
         )
 
 
 # ── Add event ────────────────────────────────────────────────────
 
 def _admin_city_keyboard(prefix: str) -> InlineKeyboardMarkup:
-    buttons = [
-        InlineKeyboardButton(c["name"], callback_data=f"{prefix}:{c['key']}")
+    rows = [
+        [InlineKeyboardButton(c["name"], callback_data=f"{prefix}:{c['key']}")]
         for c in config.CITIES
     ]
-    return InlineKeyboardMarkup(texts._in_pairs(buttons))
+    return InlineKeyboardMarkup(rows)
 
 
 async def addevent_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -148,7 +188,7 @@ async def addevent_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return ConversationHandler.END
     context.user_data["new_event"] = {}
     await update.message.reply_text(
-        "🏙 Tadbir qaysi hududda bo‘ladi?",
+        "🏙 Tadbir qaysi shaharda bo‘ladi?",
         reply_markup=_admin_city_keyboard("aecity"),
     )
     return AE_CITY
@@ -161,7 +201,7 @@ async def addevent_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     context.user_data["new_event"]["city"] = city_key
     city = config.CITY_BY_KEY.get(city_key)
     await query.edit_message_text(
-        f"📍 Hudud: <b>{city['name']}</b>\n\nTadbir nomini yozing:",
+        f"📍 Shahar: <b>{city['name']}</b>\n\nTadbir nomini yozing:",
         parse_mode=ParseMode.HTML,
     )
     return AE_TITLE
@@ -187,10 +227,24 @@ async def addevent_date(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
 async def addevent_desc(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     text = update.message.text.strip()
-    ev = context.user_data["new_event"]
-    ev["description"] = None if text == "-" else text
+    context.user_data["new_event"]["description"] = None if text == "-" else text
+    await update.message.reply_text(
+        "💰 To‘lov summasini yozing (masalan: <b>50 000 so‘m</b>).\n"
+        "Tadbir bepul bo‘lsa <b>Bepul</b> deb yozing, "
+        "yoki ko‘rsatmaslik uchun «-» yuboring:",
+        parse_mode=ParseMode.HTML,
+    )
+    return AE_PRICE
 
-    db.add_event(ev["city"], ev["title"], ev.get("date"), ev.get("description"))
+
+async def addevent_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    text = update.message.text.strip()
+    ev = context.user_data["new_event"]
+    ev["price"] = None if text == "-" else text
+
+    db.add_event(
+        ev["city"], ev["title"], ev.get("date"), ev.get("description"), ev.get("price")
+    )
     city = config.CITY_BY_KEY.get(ev["city"])
 
     await update.message.reply_text(
@@ -207,6 +261,8 @@ async def addevent_desc(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         notice += f"\n🗓 {html.escape(ev['date'])}"
     if ev.get("description"):
         notice += f"\n{html.escape(ev['description'])}"
+    if ev.get("price"):
+        notice += f"\n💰 To‘lov: {html.escape(ev['price'])}"
 
     sent = await _notify_users(context, db.user_ids_for_city(ev["city"]), notice)
     await update.message.reply_text(f"📨 {sent} ta foydalanuvchiga bildirishnoma yuborildi.")
@@ -221,10 +277,10 @@ async def broadcast_start(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if not await _guard(update):
         return ConversationHandler.END
     rows = [[InlineKeyboardButton("📣 Hammaga", callback_data="bcast:all")]]
-    rows += texts._in_pairs([
-        InlineKeyboardButton(c["name"], callback_data=f"bcast:{c['key']}")
-        for c in config.CITIES
-    ])
+    for c in config.CITIES:
+        rows.append(
+            [InlineKeyboardButton(c["name"], callback_data=f"bcast:{c['key']}")]
+        )
     await update.message.reply_text(
         "📢 Xabarni kimga yuboramiz?", reply_markup=InlineKeyboardMarkup(rows)
     )
@@ -262,6 +318,136 @@ async def broadcast_message(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     return ConversationHandler.END
 
 
+# ── Registration review (approve / reject) ───────────────────────
+
+async def review_registration_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle an admin tapping Tasdiqlash / Rad etish on a registration."""
+    query = update.callback_query
+    admin_id = update.effective_user.id
+
+    if not is_admin(admin_id):
+        await query.answer("⛔️ Faqat adminlar uchun.", show_alert=True)
+        return
+
+    action, raw_id = query.data.split(":", 1)
+    reg_id = int(raw_id)
+    new_status = db.APPROVED if action == "regok" else db.REJECTED
+
+    changed, reg = db.review_registration(reg_id, new_status, admin_id)
+
+    if reg is None:
+        await query.answer("❗️ Ariza topilmadi.", show_alert=True)
+        return
+
+    if not changed:
+        # Another admin already decided this one — don't notify the user twice.
+        label = "tasdiqlangan" if reg.status == db.APPROVED else "rad etilgan"
+        await query.answer(f"ℹ️ Bu ariza allaqachon {label}.", show_alert=True)
+        await _mark_reviewed(query, reg.status, already=True)
+        return
+
+    await query.answer("✅ Tasdiqlandi" if new_status == db.APPROVED else "❌ Rad etildi")
+    await _mark_reviewed(query, new_status)
+
+    await _notify_applicant(context, reg, new_status)
+
+
+async def _mark_reviewed(query, status: str, already: bool = False) -> None:
+    """Stamp the decision onto the admin's message and drop the buttons."""
+    stamp = (
+        "\n\n✅ <b>TASDIQLANDI</b>"
+        if status == db.APPROVED
+        else "\n\n❌ <b>RAD ETILDI</b>"
+    )
+    if already:
+        stamp += " <i>(boshqa admin tomonidan)</i>"
+    try:
+        if query.message.caption is not None:
+            base = query.message.caption_html or query.message.caption
+            await query.edit_message_caption(
+                caption=base + stamp, parse_mode=ParseMode.HTML, reply_markup=None
+            )
+        else:
+            # /pending falls back to a plain text message when a receipt
+            # photo is missing — that one needs edit_message_text.
+            base = query.message.text_html or query.message.text or ""
+            await query.edit_message_text(
+                text=base + stamp, parse_mode=ParseMode.HTML, reply_markup=None
+            )
+    except Exception as exc:  # noqa: BLE001 — message may be too old to edit
+        logger.info("Could not update review message: %s", exc)
+
+
+async def _notify_applicant(
+    context: ContextTypes.DEFAULT_TYPE, reg, status: str
+) -> None:
+    """Tell the applicant the outcome; on approval include event details."""
+    if status == db.APPROVED:
+        event = db.get_event(reg.event_id)
+        city = config.CITY_BY_KEY.get(event.city) if event else None
+
+        lines = [texts.APPROVED_HEADER, ""]
+        if event:
+            lines.append(f"🎉 <b>{html.escape(event.title)}</b>")
+            if event.date:
+                lines.append(f"🗓 {html.escape(event.date)}")
+            if city:
+                lines.append(f"📍 {html.escape(city['name'])}")
+            lines.append("")
+        lines.append(texts.LOCATION_NOTE)
+        message = "\n".join(lines)
+    else:
+        message = texts.REJECTED_MSG
+
+    try:
+        await context.bot.send_message(
+            chat_id=reg.user_id, text=message, parse_mode=ParseMode.HTML
+        )
+    except Exception as exc:  # noqa: BLE001 — user may have blocked the bot
+        logger.info("Could not notify applicant %s: %s", reg.user_id, exc)
+
+
+async def pending_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Re-send every still-unreviewed registration to the requesting admin."""
+    if not await _guard(update):
+        return
+
+    pending = db.pending_registrations()
+    if not pending:
+        await update.message.reply_text("✅ Tekshirilmagan arizalar yo‘q.")
+        return
+
+    await update.message.reply_text(f"⏳ {len(pending)} ta ariza kutilmoqda:")
+    for reg in pending:
+        event = db.get_event(reg.event_id)
+        caption = (
+            "🧾 <b>Tadbir arizasi</b>\n\n"
+            f"🎉 <b>Tadbir:</b> {html.escape(event.title) if event else '—'}\n"
+            f"👤 <b>Ism:</b> {html.escape(reg.full_name or '—')}\n"
+            f"🎂 <b>Yosh:</b> {reg.age or '—'}\n"
+            f"📞 <b>Telefon:</b> {html.escape(reg.phone or '—')}\n\n"
+            f"🆔 Ariza №{reg.id}"
+        )
+        try:
+            if reg.receipt_file_id:
+                await context.bot.send_photo(
+                    chat_id=update.effective_user.id,
+                    photo=reg.receipt_file_id,
+                    caption=caption,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=texts.review_keyboard(reg.id),
+                )
+            else:
+                await update.message.reply_text(
+                    caption,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=texts.review_keyboard(reg.id),
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Could not resend registration %s: %s", reg.id, exc)
+        await asyncio.sleep(0.05)
+
+
 # ── Shared helpers ───────────────────────────────────────────────
 
 async def _notify_users(
@@ -293,6 +479,10 @@ def register_admin_handlers(application: Application) -> None:
     application.add_handler(CommandHandler("admin", admin_help))
     application.add_handler(CommandHandler("stats", stats))
     application.add_handler(CommandHandler("export", export))
+    application.add_handler(CommandHandler("pending", pending_list))
+    application.add_handler(
+        CallbackQueryHandler(review_registration_cb, pattern=r"^reg(ok|no):\d+$")
+    )
 
     addevent_conv = ConversationHandler(
         entry_points=[CommandHandler("addevent", addevent_start)],
@@ -301,6 +491,7 @@ def register_admin_handlers(application: Application) -> None:
             AE_TITLE: [MessageHandler(filters.TEXT & ~filters.COMMAND, addevent_title)],
             AE_DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, addevent_date)],
             AE_DESC: [MessageHandler(filters.TEXT & ~filters.COMMAND, addevent_desc)],
+            AE_PRICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, addevent_price)],
         },
         fallbacks=[CommandHandler("bekor", admin_cancel), CommandHandler("cancel", admin_cancel)],
         allow_reentry=True,

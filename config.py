@@ -54,20 +54,11 @@ ADMIN_IDS: list[int] = _parse_ids(os.getenv("ADMIN_IDS"))
 # `name` is the label shown to users (Uzbek).
 # `group_env` is the env var holding that city's Telegram group id.
 CITIES: list[dict] = [
-    {"key": "andijan", "name": "Andijon", "group_env": "GROUP_ANDIJAN"},
-    {"key": "bukhara", "name": "Buxoro", "group_env": "GROUP_BUKHARA"},
-    {"key": "fergana", "name": "Farg‘ona", "group_env": "GROUP_FERGANA"},
-    {"key": "jizzakh", "name": "Jizzax", "group_env": "GROUP_JIZZAKH"},
     {"key": "namangan", "name": "Namangan", "group_env": "GROUP_NAMANGAN"},
-    {"key": "navoiy", "name": "Navoiy", "group_env": "GROUP_NAVOIY"},
-    {"key": "kashkadarya", "name": "Qashqadaryo", "group_env": "GROUP_KASHKADARYA"},
-    {"key": "karakalpakstan", "name": "Qoraqalpog‘iston", "group_env": "GROUP_KARAKALPAKSTAN"},
+    {"key": "fergana", "name": "Farg‘ona", "group_env": "GROUP_FERGANA"},
+    {"key": "tashkent", "name": "Toshkent", "group_env": "GROUP_TASHKENT"},
     {"key": "samarkand", "name": "Samarqand", "group_env": "GROUP_SAMARKAND"},
-    {"key": "syrdarya", "name": "Sirdaryo", "group_env": "GROUP_SYRDARYA"},
-    {"key": "surkhandarya", "name": "Surxondaryo", "group_env": "GROUP_SURKHANDARYA"},
-    {"key": "tashkent", "name": "Toshkent shahri", "group_env": "GROUP_TASHKENT"},
-    {"key": "tashkent_region", "name": "Toshkent viloyati", "group_env": "GROUP_TASHKENT_REGION"},
-    {"key": "khorezm", "name": "Xorazm", "group_env": "GROUP_KHOREZM"},
+    {"key": "andijan", "name": "Andijon", "group_env": "GROUP_ANDIJAN"},
 ]
 
 CITY_BY_KEY: dict[str, dict] = {c["key"]: c for c in CITIES}

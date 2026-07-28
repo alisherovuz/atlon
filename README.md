@@ -8,7 +8,12 @@ shahar guruhlariga yuborish va shahar bo‘yicha bildirishnomalar.
 
 - **Obuna nazorati** — foydalanuvchi avval kanalga obuna bo‘lishi shart.
 - **Asosiy menyu** — *Atlon Group haqida*, *Tadbirlar*, *Volontyor bo‘lish*.
-- **Tadbirlar** — shahar tanlab, o‘sha shahardagi tadbirlarni ko‘rish.
+- **Tadbirlar** — shahar tanlanganda shahar tugmalari yo‘qoladi va tadbirlar
+  bittalab ko‘rsatiladi (*⬅️ Avvalgisi* / *Keyingisi ➡️*), har birining tagida
+  ro‘yxatdan o‘tish tugmasi bilan.
+- **Tadbirga ro‘yxatdan o‘tish** — ism-familiya, yosh, telefon, to‘lov cheki
+  (**faqat rasm ko‘rinishida**). So‘ng admin chekni tasdiqlaydi yoki rad etadi;
+  tasdiqlangach foydalanuvchiga tabrik va tadbir ma’lumotlari yuboriladi.
 - **Volontyor arizasi** — shahar, ism-familiya, yosh, telefon (kontakt tugmasi),
   qiziqishlar, bio.
 - **Saqlash** — ma’lumotlar bazasi (Postgres/SQLite) + Excel export (`/export`).
@@ -70,11 +75,33 @@ python bot.py
 | Buyruq | Vazifa |
 |---|---|
 | `/admin` | Admin yordam menyusi |
-| `/addevent` | Tadbir qo‘shish (+ shahar bo‘yicha bildirishnoma) |
+| `/addevent` | Tadbir qo‘shish: shahar, nom, sana, tavsif, **to‘lov summasi** (+ bildirishnoma) |
+| `/pending` | Tekshirilmagan tadbir arizalarini qayta ko‘rish |
 | `/broadcast` | Hammaga yoki shahar bo‘yicha xabar |
-| `/export` | Arizalarni Excel qilib yuklab olish |
+| `/export` | Volontyor + tadbir arizalarini Excel qilib yuklab olish |
 | `/stats` | Statistika |
+| `/id` | Joriy chat ID sini bilish (guruh sozlash uchun) |
 | `/bekor` | Jarayonni bekor qilish |
+
+### Tadbir arizasini tasdiqlash
+
+Foydalanuvchi chek rasmini yuborgach, ariza `ADMIN_IDS` dagi barcha adminlarga
+chek rasmi bilan birga yuboriladi va tagida **✅ Tasdiqlash** / **❌ Rad etish**
+tugmalari chiqadi. Tasdiqlangach foydalanuvchi quyidagi xabarni oladi:
+
+```
+🎉 Tabriklaymiz!
+Sizning Atlon Group tadbiriga yuborgan arizangiz muvaffaqiyatli tasdiqlandi. ✅
+
+🎉 Debat
+🗓 7-may, 17:00
+📍 Xorazm
+
+ℹ️ Aniq lokatsiya telegram kanalga yuboriladi.
+```
+
+Ikki admin bir vaqtda bosib yuborsa, ikkinchisiga «allaqachon tasdiqlangan»
+deb ko‘rsatiladi va foydalanuvchiga takroriy xabar bormaydi.
 
 ## Loyiha tuzilishi
 

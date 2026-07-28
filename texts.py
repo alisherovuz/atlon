@@ -59,14 +59,70 @@ ABOUT = (
     "Biz bilan birga o‘s! 🚀"
 )
 
-EVENTS_PICK_CITY = "📍 Tadbirlarni ko‘rish uchun hududni tanlang:"
-NO_EVENTS = "ℹ️ Hozircha bu hudud uchun tadbirlar mavjud emas. Tez orada qo‘shiladi!"
+EVENTS_PICK_CITY = "📍 Tadbirlarni ko‘rish uchun shaharni tanlang:"
+NO_EVENTS = "ℹ️ Hozircha bu shahar uchun tadbirlar mavjud emas. Tez orada qo‘shiladi!"
+
+# ── Event registration ───────────────────────────────────────────
+
+EVREG_ASK_NAME = (
+    "📝 <b>Tadbirga ro‘yxatdan o‘tish</b>\n\n"
+    "Istalgan vaqtda /bekor buyrug‘i bilan bekor qilishingiz mumkin.\n\n"
+    "1️⃣ Ism va familiyangizni yozing:"
+)
+EVREG_ASK_AGE = "2️⃣ Yoshingizni kiriting (faqat raqam):"
+EVREG_AGE_INVALID = "❗️ Iltimos, yoshingizni raqam bilan kiriting (masalan: 19)."
+EVREG_ASK_PHONE = (
+    "3️⃣ Telefon raqamingizni yuboring.\n\n"
+    "Pastdagi <b>“📱 Raqamni yuborish”</b> tugmasidan foydalaning yoki "
+    "raqamni qo‘lda yozing."
+)
+EVREG_ASK_RECEIPT = (
+    "4️⃣ To‘lov chekini yuboring.\n\n"
+    "⚠️ <b>Diqqat:</b> chek <b>faqat rasm (foto) ko‘rinishida</b> qabul qilinadi. "
+    "Fayl, hujjat yoki matn ko‘rinishida yuborilgan cheklar qabul qilinmaydi."
+)
+EVREG_RECEIPT_INVALID = (
+    "❗️ Chek <b>faqat rasm (foto) ko‘rinishida</b> qabul qilinadi.\n\n"
+    "Iltimos, chek rasmini foto sifatida yuboring (fayl/hujjat sifatida emas)."
+)
+EVREG_DONE = (
+    "✅ <b>Ariza yuborildi!</b>\n\n"
+    "To‘lov chekingiz tekshirilmoqda. Tasdiqlangach, sizga xabar beramiz. "
+    "Rahmat! 🙌"
+)
+EVREG_CANCELLED = "❌ Ro‘yxatdan o‘tish bekor qilindi."
+EVREG_ALREADY_PENDING = (
+    "ℹ️ Siz bu tadbirga allaqachon ariza yuborgansiz. "
+    "Arizangiz tekshirilmoqda — natijani kutib turing."
+)
+EVREG_ALREADY_APPROVED = (
+    "✅ Siz bu tadbirga allaqachon ro‘yxatdan o‘tgansiz va arizangiz tasdiqlangan."
+)
+EVREG_EVENT_GONE = "❗️ Kechirasiz, bu tadbir topilmadi."
+
+APPROVED_HEADER = (
+    "🎉 <b>Tabriklaymiz!</b>\n\n"
+    "Sizning Atlon Group tadbiriga yuborgan arizangiz muvaffaqiyatli "
+    "tasdiqlandi. ✅"
+)
+LOCATION_NOTE = "ℹ️ Aniq lokatsiya telegram kanalga yuboriladi."
+REJECTED_MSG = (
+    "❌ <b>Afsuski, arizangiz tasdiqlanmadi.</b>\n\n"
+    "To‘lov cheki tasdiqlanmadi yoki noto‘g‘ri yuborilgan bo‘lishi mumkin. "
+    "Iltimos, qaytadan urinib ko‘ring yoki adminlarga murojaat qiling."
+)
+
+BTN_REGISTER = "✅ Ro‘yxatdan o‘tish"
+BTN_PREV = "⬅️ Avvalgisi"
+BTN_NEXT = "Keyingisi ➡️"
+BTN_CHANGE_CITY = "🏙 Shaharni o‘zgartirish"
+BTN_MAIN_MENU = "🏠 Asosiy menyu"
 
 VOL_INTRO = (
     "📝 <b>Volontyorlik uchun ariza</b>\n\n"
     "Bir necha savolga javob bering. Istalgan vaqtda /bekor buyrug‘i bilan "
     "bekor qilishingiz mumkin.\n\n"
-    "1️⃣ Avval hududingizni tanlang:"
+    "1️⃣ Avval shahringizni tanlang:"
 )
 VOL_ASK_NAME = "2️⃣ Ism va familiyangizni yozing:"
 VOL_ASK_AGE = "3️⃣ Yoshingizni kiriting (faqat raqam):"
@@ -98,7 +154,6 @@ BTN_ABOUT = "ℹ️ Atlon Group haqida"
 BTN_EVENTS = "📅 Tadbirlar"
 BTN_VOLUNTEER = "🤝 Volontyor bo‘lish"
 BTN_BACK = "⬅️ Orqaga"
-BTN_CANCEL = "❌ Bekor qilish"
 
 # ── Inline keyboards ─────────────────────────────────────────────
 
@@ -126,40 +181,67 @@ def back_to_menu_keyboard() -> InlineKeyboardMarkup:
     )
 
 
-def _in_pairs(items: list) -> list[list]:
-    """Chunk buttons into rows of two — 14 regions in one column is a lot
-    of scrolling on a phone."""
-    return [items[i:i + 2] for i in range(0, len(items), 2)]
-
-
-def city_inline_keyboard(
-    prefix: str,
-    footer_label: str = BTN_BACK,
-    footer_callback: str = "menu",
+def event_card_keyboard(
+    city_key: str, index: int, total: int, event_id: int
 ) -> InlineKeyboardMarkup:
-    """City buttons, two per row (callback_data = '<prefix>:<city_key>').
+    """Navigation + register buttons shown under a single event card."""
+    rows = []
 
-    The footer button is configurable so the same grid can act as
-    "back to menu" while browsing events, and "cancel" inside the
-    volunteer application.
-    """
-    buttons = [
-        InlineKeyboardButton(c["name"], callback_data=f"{prefix}:{c['key']}")
-        for c in config.CITIES
-    ]
-    rows = _in_pairs(buttons)
-    rows.append([InlineKeyboardButton(footer_label, callback_data=footer_callback)])
+    nav = []
+    if index > 0:
+        nav.append(
+            InlineKeyboardButton(BTN_PREV, callback_data=f"ev:{city_key}:{index - 1}")
+        )
+    if index < total - 1:
+        nav.append(
+            InlineKeyboardButton(BTN_NEXT, callback_data=f"ev:{city_key}:{index + 1}")
+        )
+    if nav:
+        rows.append(nav)
+
+    rows.append([InlineKeyboardButton(BTN_REGISTER, callback_data=f"evreg:{event_id}")])
+    rows.append([InlineKeyboardButton(BTN_CHANGE_CITY, callback_data="events")])
+    rows.append([InlineKeyboardButton(BTN_MAIN_MENU, callback_data="menu")])
     return InlineKeyboardMarkup(rows)
 
 
-def volunteer_city_keyboard() -> InlineKeyboardMarkup:
-    """Region picker shown inline under the volunteer intro message."""
-    return city_inline_keyboard(
-        "volcity", footer_label=BTN_CANCEL, footer_callback="volcancel"
+def no_events_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(BTN_CHANGE_CITY, callback_data="events")],
+            [InlineKeyboardButton(BTN_MAIN_MENU, callback_data="menu")],
+        ]
     )
 
 
+def review_keyboard(reg_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton("✅ Tasdiqlash", callback_data=f"regok:{reg_id}"),
+                InlineKeyboardButton("❌ Rad etish", callback_data=f"regno:{reg_id}"),
+            ]
+        ]
+    )
+
+
+def city_inline_keyboard(prefix: str) -> InlineKeyboardMarkup:
+    """City buttons for browsing (callback_data = '<prefix>:<city_key>')."""
+    rows = [
+        [InlineKeyboardButton(c["name"], callback_data=f"{prefix}:{c['key']}")]
+        for c in config.CITIES
+    ]
+    rows.append([InlineKeyboardButton(BTN_BACK, callback_data="menu")])
+    return InlineKeyboardMarkup(rows)
+
+
 # ── Reply keyboards (for the conversation flow) ──────────────────
+
+def city_reply_keyboard() -> ReplyKeyboardMarkup:
+    rows = [[c["name"]] for c in config.CITIES]
+    return ReplyKeyboardMarkup(
+        rows, resize_keyboard=True, one_time_keyboard=True
+    )
 
 
 def phone_reply_keyboard() -> ReplyKeyboardMarkup:
