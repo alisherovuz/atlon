@@ -88,6 +88,9 @@ class Event(Base):
     description = mapped_column(Text, nullable=True)
     # Free-text so admins can write "50 000 so'm", "Bepul", etc.
     price = mapped_column(String(64), nullable=True)
+    # Soft delete: hidden from users but kept so past registrations and
+    # payment records still resolve to a named event in exports.
+    is_active = mapped_column(Integer, default=1)
     created_at = mapped_column(DateTime, default=datetime.utcnow)
 
 
@@ -128,7 +131,13 @@ def _ensure_columns() -> None:
     inspector = inspect(engine)
     existing_tables = set(inspector.get_table_names())
 
-    wanted = {"events": {"price": "VARCHAR(64)"}}
+    wanted = {
+        "events": {
+            "price": "VARCHAR(64)",
+            # DEFAULT 1 backfills existing rows as visible.
+            "is_active": "INTEGER DEFAULT 1",
+        }
+    }
 
     for table, columns in wanted.items():
         if table not in existing_tables:
@@ -261,12 +270,24 @@ def get_event(event_id: int) -> Event | None:
         return ev
 
 
+def _visible():
+    """Filter for events that have not been soft-deleted.
+
+    Rows created before the is_active column existed may be NULL, so treat
+    NULL as visible rather than silently hiding old events.
+    """
+    from sqlalchemy import or_
+
+    return or_(Event.is_active == 1, Event.is_active.is_(None))
+
+
 def events_for_city(city_key: str) -> list[Event]:
     with session_scope() as s:
         rows = (
             s.execute(
                 select(Event)
                 .where(Event.city == city_key)
+                .where(_visible())
                 .order_by(Event.created_at.desc())
             )
             .scalars()
@@ -275,6 +296,37 @@ def events_for_city(city_key: str) -> list[Event]:
         for r in rows:
             s.expunge(r)
         return list(rows)
+
+
+def update_event(event_id: int, field: str, value: str | None) -> bool:
+    """Update one field of an event. Returns False if it no longer exists."""
+    if field not in {"title", "date", "description", "price"}:
+        raise ValueError(f"field not editable: {field}")
+    with session_scope() as s:
+        ev = s.get(Event, event_id)
+        if ev is None:
+            return False
+        setattr(ev, field, value)
+        return True
+
+
+def delete_event(event_id: int) -> bool:
+    """Soft-delete an event so it disappears for users but records survive."""
+    with session_scope() as s:
+        ev = s.get(Event, event_id)
+        if ev is None:
+            return False
+        ev.is_active = 0
+        return True
+
+
+def count_registrations_for_event(event_id: int) -> int:
+    with session_scope() as s:
+        return s.execute(
+            select(func.count(EventRegistration.id)).where(
+                EventRegistration.event_id == event_id
+            )
+        ).scalar_one()
 
 
 def count_users() -> int:

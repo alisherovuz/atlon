@@ -381,7 +381,9 @@ async def evreg_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
     event_id = int(query.data.split(":", 1)[1])
     event = db.get_event(event_id)
-    if event is None:
+    # is_active == 0 means an admin deleted it while this card was still
+    # open on someone's screen.
+    if event is None or event.is_active == 0:
         await query.message.reply_text(texts.EVREG_EVENT_GONE)
         return ConversationHandler.END
 

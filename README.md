@@ -76,6 +76,7 @@ python bot.py
 |---|---|
 | `/admin` | Admin yordam menyusi |
 | `/addevent` | Tadbir qo‘shish: shahar, nom, sana, tavsif, **to‘lov summasi** (+ bildirishnoma) |
+| `/events` | Tadbirlarni tahrirlash yoki o‘chirish |
 | `/pending` | Tekshirilmagan tadbir arizalarini qayta ko‘rish |
 | `/broadcast` | Hammaga yoki shahar bo‘yicha xabar |
 | `/export` | Volontyor + tadbir arizalarini Excel qilib yuklab olish |

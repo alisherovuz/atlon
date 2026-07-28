@@ -36,6 +36,7 @@ logger = logging.getLogger("atlon-bot.admin")
 # Conversation states
 AE_CITY, AE_TITLE, AE_DATE, AE_DESC, AE_PRICE = range(10, 15)
 BC_TARGET, BC_MSG = range(20, 22)
+ME_VALUE = 40
 
 EXPORT_DIR = "exports"
 
@@ -61,6 +62,7 @@ async def admin_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     await update.message.reply_text(
         "🛠 <b>Admin panel</b>\n\n"
         "/addevent — yangi tadbir qo‘shish (shahar bo‘yicha bildirishnoma bilan)\n"
+        "/events — tadbirlarni tahrirlash yoki o‘chirish\n"
         "/pending — tekshirilmagan tadbir arizalarini ko‘rish\n"
         "/broadcast — hammaga yoki shahar bo‘yicha xabar yuborish\n"
         "/export — arizalarni Excel faylga yuklab olish\n"
@@ -318,6 +320,252 @@ async def broadcast_message(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     return ConversationHandler.END
 
 
+# ── Event management (list / edit / delete) ──────────────────────
+
+EDITABLE = {
+    "title": "Nom",
+    "date": "Sana",
+    "description": "Tavsif",
+    "price": "To‘lov summasi",
+}
+
+
+async def manage_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not await _guard(update):
+        return
+    await update.message.reply_text(
+        "🗂 <b>Tadbirlarni boshqarish</b>\n\nShaharni tanlang:",
+        reply_markup=_admin_city_keyboard("admcity"),
+        parse_mode=ParseMode.HTML,
+    )
+
+
+def _event_list_keyboard(city_key: str, events) -> InlineKeyboardMarkup:
+    rows = [
+        [
+            InlineKeyboardButton(
+                (ev.title[:50] + "…") if len(ev.title) > 50 else ev.title,
+                callback_data=f"admev:{ev.id}",
+            )
+        ]
+        for ev in events
+    ]
+    rows.append([InlineKeyboardButton("⬅️ Shaharlar", callback_data="admlist")])
+    return InlineKeyboardMarkup(rows)
+
+
+async def manage_city(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+    if not is_admin(update.effective_user.id):
+        return
+
+    city_key = query.data.split(":", 1)[1]
+    city = config.CITY_BY_KEY.get(city_key)
+    if not city:
+        return
+
+    events = db.events_for_city(city_key)
+    if not events:
+        await query.edit_message_text(
+            f"📍 <b>{html.escape(city['name'])}</b>\n\nBu shaharda tadbirlar yo‘q.",
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("⬅️ Shaharlar", callback_data="admlist")]]
+            ),
+            parse_mode=ParseMode.HTML,
+        )
+        return
+
+    await query.edit_message_text(
+        f"📍 <b>{html.escape(city['name'])}</b> — {len(events)} ta tadbir.\n\n"
+        "Tahrirlash yoki o‘chirish uchun tanlang:",
+        reply_markup=_event_list_keyboard(city_key, events),
+        parse_mode=ParseMode.HTML,
+    )
+
+
+async def manage_back_to_cities(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+    if not is_admin(update.effective_user.id):
+        return
+    await query.edit_message_text(
+        "🗂 <b>Tadbirlarni boshqarish</b>\n\nShaharni tanlang:",
+        reply_markup=_admin_city_keyboard("admcity"),
+        parse_mode=ParseMode.HTML,
+    )
+
+
+def _event_detail_text(ev) -> str:
+    city = config.CITY_BY_KEY.get(ev.city)
+    regs = db.count_registrations_for_event(ev.id)
+    return (
+        f"🎉 <b>{html.escape(ev.title)}</b>\n"
+        f"📍 {html.escape(city['name']) if city else '—'}\n"
+        f"🗓 {html.escape(ev.date) if ev.date else '—'}\n"
+        f"📝 {html.escape(ev.description) if ev.description else '—'}\n"
+        f"💰 {html.escape(ev.price) if ev.price else '—'}\n\n"
+        f"🎫 Arizalar: <b>{regs}</b>\n"
+        f"🆔 <code>{ev.id}</code>"
+    )
+
+
+def _event_detail_keyboard(ev) -> InlineKeyboardMarkup:
+    rows = [
+        [
+            InlineKeyboardButton(
+                f"✏️ {label}", callback_data=f"admedit:{ev.id}:{field}"
+            )
+        ]
+        for field, label in EDITABLE.items()
+    ]
+    rows.append([InlineKeyboardButton("🗑 O‘chirish", callback_data=f"admdel:{ev.id}")])
+    rows.append(
+        [InlineKeyboardButton("⬅️ Orqaga", callback_data=f"admcity:{ev.city}")]
+    )
+    return InlineKeyboardMarkup(rows)
+
+
+async def manage_event(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+    if not is_admin(update.effective_user.id):
+        return
+
+    event_id = int(query.data.split(":", 1)[1])
+    ev = db.get_event(event_id)
+    if ev is None:
+        await query.edit_message_text("❗️ Tadbir topilmadi.")
+        return
+
+    await query.edit_message_text(
+        _event_detail_text(ev),
+        reply_markup=_event_detail_keyboard(ev),
+        parse_mode=ParseMode.HTML,
+    )
+
+
+async def manage_delete_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+    if not is_admin(update.effective_user.id):
+        return
+
+    event_id = int(query.data.split(":", 1)[1])
+    ev = db.get_event(event_id)
+    if ev is None:
+        await query.edit_message_text("❗️ Tadbir topilmadi.")
+        return
+
+    regs = db.count_registrations_for_event(event_id)
+    warning = (
+        f"\n\n⚠️ Bu tadbirga <b>{regs} ta ariza</b> yuborilgan. "
+        "Tadbir foydalanuvchilardan yashiriladi, lekin arizalar "
+        "hisobotda (/export) saqlanib qoladi."
+        if regs
+        else ""
+    )
+    await query.edit_message_text(
+        f"🗑 <b>O‘chirishni tasdiqlang</b>\n\n"
+        f"🎉 {html.escape(ev.title)}{warning}",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("✅ Ha, o‘chirilsin", callback_data=f"admdelok:{ev.id}")],
+                [InlineKeyboardButton("⬅️ Yo‘q, orqaga", callback_data=f"admev:{ev.id}")],
+            ]
+        ),
+        parse_mode=ParseMode.HTML,
+    )
+
+
+async def manage_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    if not is_admin(update.effective_user.id):
+        await query.answer("⛔️ Faqat adminlar uchun.", show_alert=True)
+        return
+
+    event_id = int(query.data.split(":", 1)[1])
+    ev = db.get_event(event_id)
+    ok = db.delete_event(event_id)
+    await query.answer("🗑 O‘chirildi" if ok else "❗️ Topilmadi")
+
+    if not ok:
+        await query.edit_message_text("❗️ Tadbir topilmadi.")
+        return
+
+    await query.edit_message_text(
+        f"🗑 <b>O‘chirildi:</b> {html.escape(ev.title) if ev else ''}",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "⬅️ Tadbirlar ro‘yxati",
+                        callback_data=f"admcity:{ev.city}" if ev else "admlist",
+                    )
+                ]
+            ]
+        ),
+        parse_mode=ParseMode.HTML,
+    )
+
+
+async def manage_edit_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await query.answer()
+    if not is_admin(update.effective_user.id):
+        return ConversationHandler.END
+
+    _, raw_id, field = query.data.split(":")
+    event_id = int(raw_id)
+    ev = db.get_event(event_id)
+    if ev is None:
+        await query.edit_message_text("❗️ Tadbir topilmadi.")
+        return ConversationHandler.END
+
+    context.user_data["edit_event"] = {"id": event_id, "field": field}
+    current = getattr(ev, field, None)
+
+    await query.edit_message_text(
+        f"✏️ <b>{EDITABLE[field]}</b>ni tahrirlash\n\n"
+        f"Hozirgi qiymat: <i>{html.escape(str(current)) if current else '—'}</i>\n\n"
+        "Yangi qiymatni yuboring"
+        + ("" if field == "title" else " (tozalash uchun «-» yuboring)")
+        + ".\nBekor qilish: /bekor",
+        parse_mode=ParseMode.HTML,
+    )
+    return ME_VALUE
+
+
+async def manage_edit_value(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    info = context.user_data.get("edit_event")
+    if not info:
+        return ConversationHandler.END
+
+    text = update.message.text.strip()
+    field = info["field"]
+
+    if field == "title" and (not text or text == "-"):
+        await update.message.reply_text("❗️ Nom bo‘sh bo‘lishi mumkin emas.")
+        return ME_VALUE
+
+    value = None if text == "-" else text
+    ok = db.update_event(info["id"], field, value)
+    context.user_data.pop("edit_event", None)
+
+    if not ok:
+        await update.message.reply_text("❗️ Tadbir topilmadi.")
+        return ConversationHandler.END
+
+    ev = db.get_event(info["id"])
+    await update.message.reply_text(f"✅ <b>{EDITABLE[field]}</b> yangilandi.", parse_mode=ParseMode.HTML)
+    await update.message.reply_text(
+        _event_detail_text(ev),
+        reply_markup=_event_detail_keyboard(ev),
+        parse_mode=ParseMode.HTML,
+    )
+    return ConversationHandler.END
+
+
 # ── Registration review (approve / reject) ───────────────────────
 
 async def review_registration_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -467,6 +715,7 @@ async def _notify_users(
 async def admin_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.pop("new_event", None)
     context.user_data.pop("bcast_target", None)
+    context.user_data.pop("edit_event", None)
     await update.message.reply_text(
         "❌ Bekor qilindi.", reply_markup=ReplyKeyboardRemove()
     )
@@ -482,6 +731,40 @@ def register_admin_handlers(application: Application) -> None:
     application.add_handler(CommandHandler("pending", pending_list))
     application.add_handler(
         CallbackQueryHandler(review_registration_cb, pattern=r"^reg(ok|no):\d+$")
+    )
+
+    # Event management: list → detail → edit/delete
+    edit_event_conv = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(
+                manage_edit_start,
+                pattern=r"^admedit:\d+:(title|date|description|price)$",
+            )
+        ],
+        states={
+            ME_VALUE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, manage_edit_value)
+            ]
+        },
+        fallbacks=[
+            CommandHandler("bekor", admin_cancel),
+            CommandHandler("cancel", admin_cancel),
+        ],
+        allow_reentry=True,
+    )
+
+    application.add_handler(CommandHandler("events", manage_start))
+    application.add_handler(edit_event_conv)
+    application.add_handler(CallbackQueryHandler(manage_city, pattern=r"^admcity:"))
+    application.add_handler(
+        CallbackQueryHandler(manage_back_to_cities, pattern=r"^admlist$")
+    )
+    application.add_handler(CallbackQueryHandler(manage_event, pattern=r"^admev:\d+$"))
+    application.add_handler(
+        CallbackQueryHandler(manage_delete_confirm, pattern=r"^admdel:\d+$")
+    )
+    application.add_handler(
+        CallbackQueryHandler(manage_delete, pattern=r"^admdelok:\d+$")
     )
 
     addevent_conv = ConversationHandler(
