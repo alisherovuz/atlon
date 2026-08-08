@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Arizalar — Atlon Group{% endblock %}
+{% block head %}
+<style>
+  /* The receipt is the thing being judged, so each application is drawn
+     as a ticket stub: photo on the stub side, details across the tear. */
+  .stubs{display:grid;gap:14px}
+  .stub{
+    position:relative;display:grid;grid-template-columns:210px 1fr;
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);overflow:hidden;
+  }
+  .stub.is-pending{border-left:3px solid var(--saffron)}
+  .stub.is-approved{border-left:3px solid var(--jade)}
+  .stub.is-rejected{border-left:3px solid var(--madder)}
+
+  .stub .shot{background:#0D1B2B;display:block;position:relative}
+  /* `contain`, not `cover`: a cropped receipt can hide the very amount
+     being verified. Fixed height keeps rows scannable. */
+  .stub .shot img{
+    width:100%;height:200px;object-fit:contain;display:block;padding:8px;
+  }
+  .stub .shot .none{
+    display:grid;place-items:center;height:200px;
+    color:#7B93AC;font-size:13px;text-align:center;padding:14px;
+  }
+  .stub .shot::after{ /* zoom affordance */
+    content:"Kattalashtirish";position:absolute;left:0;right:0;bottom:0;
+    background:linear-gradient(transparent,rgba(8,18,30,.85));color:#fff;
+    font-size:12px;padding:16px 10px 7px;text-align:center;
+    opacity:0;transition:opacity .15s;
+  }
+  /* Only reveal on hover-capable pointers — on touch it would sit there
+     permanently covering the receipt. */
+  @media (hover:hover){
+    .stub .shot:hover::after{opacity:1}
+  }
+  .stub .shot:focus-visible::after{opacity:1}
+
+  /* the tear */
+  .stub .body{position:relative;padding:16px 18px 16px 24px}
+  .stub .body::before{
+    content:"";position:absolute;left:0;top:12px;bottom:12px;
+    border-left:2px dashed #CFD9E3;
+  }
+  .stub .notch{
+    position:absolute;left:-9px;width:18px;height:18px;border-radius:50%;
+    background:var(--paper);
+  }
+  .stub .notch.t{top:-9px} .stub .notch.b{bottom:-9px}
+
+  .stub h3{font-size:16.5px;margin:0 0 2px;font-weight:600}
+  .stub .ev{color:var(--ink-soft);font-size:14px;margin-bottom:12px}
+  .facts{display:flex;flex-wrap:wrap;gap:7px 22px;font-size:14px;margin-bottom:14px}
+  .facts .f .k{font-size:11px;text-transform:uppercase;letter-spacing:.06em;
+               color:var(--ink-soft);font-weight:600;display:block}
+  .acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .acts form{display:inline}
+  .when{margin-left:auto;color:var(--ink-soft);font-size:12.5px}
+
+  @media(max-width:700px){
+    .stub{grid-template-columns:1fr}
+    .stub .shot img,.stub .shot .none{height:186px}
+    .stub .body{padding:16px 16px 18px}
+    .stub .body::before{left:12px;right:12px;top:0;bottom:auto;
+                        border-left:0;border-top:2px dashed #CFD9E3}
+    .stub .notch{left:-9px;top:-9px} .stub .notch.b{left:auto;right:-9px;top:-9px;bottom:auto}
+    .when{margin-left:0;width:100%}
+  }
+</style>
+{% endblock %}
+{% block body %}
+<h1>Arizalar</h1>
+<p class="lede">To‘lov cheklarini ko‘rib chiqing va tasdiqlang.</p>
+
+<div class="filters">
+  <a href="/registrations?status=pending" class="{{ 'on' if status == 'pending' }}">Kutilmoqda ({{ counts.pending }})</a>
+  <a href="/registrations?status=approved" class="{{ 'on' if status == 'approved' }}">Tasdiqlangan ({{ counts.approved }})</a>
+  <a href="/registrations?status=rejected" class="{{ 'on' if status == 'rejected' }}">Rad etilgan ({{ counts.rejected }})</a>
+  <a href="/registrations?status=all" class="{{ 'on' if status == 'all' }}">Hammasi</a>
+</div>
+
+{% if rows %}
+<div class="stubs">
+  {% for r in rows %}
+    {% set ev = events.get(r.event_id) %}
+    <article class="stub is-{{ r.status }}">
+      {% if r.receipt_file_id %}
+        <a class="shot" href="/receipt/{{ r.id }}" target="_blank" rel="noopener"
+           aria-label="{{ r.full_name }} chekini kattalashtirib ko‘rish">
+          <img src="/receipt/{{ r.id }}" alt="To‘lov cheki" loading="lazy">
+        </a>
+      {% else %}
+        <div class="shot"><div class="none">Chek yuborilmagan</div></div>
+      {% endif %}
+
+      <div class="body">
+        <span class="notch t"></span><span class="notch b"></span>
+        <h3>{{ r.full_name }}</h3>
+        <div class="ev">
+          {{ ev.title if ev else 'Tadbir #' ~ r.event_id }}
+          {% if ev and ev.price %} · <span class="num">{{ ev.price }}</span>{% endif %}
+        </div>
+
+        <div class="facts">
+          <div class="f"><span class="k">Telefon</span><span class="num">{{ r.phone or '—' }}</span></div>
+          <div class="f"><span class="k">Yosh</span><span class="num">{{ r.age or '—' }}</span></div>
+          <div class="f"><span class="k">Telegram</span>
+            {% if r.username %}<a href="https://t.me/{{ r.username }}" target="_blank" rel="noopener">@{{ r.username }}</a>
+            {% else %}<span class="num">{{ r.user_id }}</span>{% endif %}
+          </div>
+          <div class="f"><span class="k">Holat</span>
+            <span class="pill pill-{{ r.status }}">{{ status_label.get(r.status, r.status) }}</span>
+          </div>
+        </div>
+
+        <div class="acts">
+          {% if r.status == 'pending' %}
+            <form method="post" action="/registrations/{{ r.id }}/approve?next=/registrations?status={{ status }}">
+              <button class="btn btn-sm btn-ok" type="submit">Tasdiqlash</button>
+            </form>
+            <form method="post" action="/registrations/{{ r.id }}/reject?next=/registrations?status={{ status }}">
+              <button class="btn btn-sm btn-no" type="submit">Rad etish</button>
+            </form>
+          {% endif %}
+          <span class="when num">{{ r.created_at.strftime('%d.%m.%Y %H:%M') if r.created_at else '' }}</span>
+        </div>
+      </div>
+    </article>
+  {% endfor %}
+</div>
+{% else %}
+  <div class="card empty">
+    <strong>Bu yerda hech narsa yo‘q</strong>
+    Tanlangan holat bo‘yicha ariza topilmadi.
+  </div>
+{% endif %}
+{% endblock %}

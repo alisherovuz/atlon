@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Atlon Group{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* Palette drawn from Uzbek majolica tilework: indigo ground,
+       Samarkand turquoise, saffron for anything still waiting. */
+    --ink:#10243B;
+    --ink-soft:#4A5F78;
+    --glaze:#1B7F9E;
+    --glaze-deep:#125F78;
+    --saffron:#E8A33D;
+    --jade:#2E8B62;
+    --madder:#C0453B;
+    --paper:#EEF1F4;
+    --card:#FFFFFF;
+    --line:#D9E0E8;
+    --radius:14px;
+    --shadow:0 1px 2px rgba(16,36,59,.06),0 8px 24px rgba(16,36,59,.06);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+    font-size:15px;line-height:1.55;
+  }
+  a{color:var(--glaze-deep)}
+  .num{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+
+  /* ---- shell ---- */
+  .shell{display:flex;min-height:100vh}
+  .side{
+    width:232px;flex:none;background:var(--ink);color:#C8D6E5;
+    padding:22px 14px;display:flex;flex-direction:column;gap:4px;
+  }
+  .brand{
+    font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:800;
+    font-size:21px;letter-spacing:-.02em;color:#fff;
+    padding:0 10px 4px;line-height:1.15;
+  }
+  .brand span{color:var(--saffron)}
+  .brand small{
+    display:block;font-family:"IBM Plex Sans",sans-serif;font-weight:400;
+    font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;
+    color:#7B93AC;margin-top:5px;
+  }
+  .nav{margin-top:18px;display:flex;flex-direction:column;gap:2px}
+  .nav a{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    padding:9px 11px;border-radius:9px;color:#C8D6E5;text-decoration:none;
+    font-size:14.5px;transition:background .15s,color .15s;
+  }
+  .nav a:hover{background:rgba(255,255,255,.07);color:#fff}
+  .nav a.on{background:var(--glaze);color:#fff;font-weight:600}
+  .nav .tag{
+    background:var(--saffron);color:#3A2708;font-weight:600;font-size:12px;
+    padding:1px 7px;border-radius:999px;
+  }
+  .nav a.on .tag{background:#fff;color:var(--glaze-deep)}
+  .side .foot{margin-top:auto;padding:0 10px}
+  .side .foot a{color:#7B93AC;font-size:13px;text-decoration:none}
+  .side .foot a:hover{color:#fff}
+
+  .main{flex:1;min-width:0;padding:28px 30px 60px}
+  h1{
+    font-family:"Bricolage Grotesque",sans-serif;font-weight:800;
+    font-size:29px;letter-spacing:-.025em;margin:0 0 3px;
+  }
+  .lede{color:var(--ink-soft);margin:0 0 24px}
+
+  /* ---- cards / tables ---- */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .pad{padding:18px 20px}
+  table{width:100%;border-collapse:collapse;font-size:14.5px}
+  th{
+    text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;
+    color:var(--ink-soft);font-weight:600;padding:11px 14px;border-bottom:1px solid var(--line);
+  }
+  td{padding:12px 14px;border-bottom:1px solid #EDF1F5;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  .empty{padding:44px 20px;text-align:center;color:var(--ink-soft)}
+  .empty strong{display:block;color:var(--ink);font-size:16px;margin-bottom:4px}
+
+  /* ---- buttons ---- */
+  .btn{
+    display:inline-block;border:1px solid var(--line);background:#fff;color:var(--ink);
+    padding:8px 15px;border-radius:9px;font:inherit;font-size:14px;font-weight:500;
+    cursor:pointer;text-decoration:none;transition:.15s;
+  }
+  .btn:hover{border-color:var(--ink-soft)}
+  .btn-primary{background:var(--glaze);border-color:var(--glaze);color:#fff}
+  .btn-primary:hover{background:var(--glaze-deep);border-color:var(--glaze-deep)}
+  .btn-ok{background:var(--jade);border-color:var(--jade);color:#fff}
+  .btn-ok:hover{filter:brightness(.92)}
+  .btn-no{background:#fff;border-color:var(--madder);color:var(--madder)}
+  .btn-no:hover{background:var(--madder);color:#fff}
+  .btn-sm{padding:5px 11px;font-size:13px}
+
+  /* ---- pills ---- */
+  .pill{
+    display:inline-block;padding:2px 10px;border-radius:999px;
+    font-size:12.5px;font-weight:600;white-space:nowrap;
+  }
+  .pill-pending{background:#FCF0DA;color:#8A5B12}
+  .pill-approved{background:#DFF1E8;color:#1E6647}
+  .pill-rejected{background:#F9E2E0;color:#8E2E27}
+
+  /* ---- filters ---- */
+  .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  .filters a{
+    padding:6px 13px;border-radius:999px;border:1px solid var(--line);
+    background:#fff;text-decoration:none;color:var(--ink-soft);font-size:14px;
+  }
+  .filters a.on{background:var(--ink);border-color:var(--ink);color:#fff;font-weight:600}
+
+  /* ---- forms ---- */
+  label{display:block;font-size:13px;font-weight:600;margin:0 0 5px}
+  input[type=text],input[type=password],select,textarea{
+    width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:9px;
+    font:inherit;background:#fff;color:var(--ink);
+  }
+  input:focus,select:focus,textarea:focus{
+    outline:2px solid var(--glaze);outline-offset:1px;border-color:transparent;
+  }
+  .field{margin-bottom:16px}
+  .hint{font-size:12.5px;color:var(--ink-soft);margin-top:4px}
+  .alert{
+    background:#F9E2E0;color:#8E2E27;padding:11px 14px;border-radius:9px;
+    margin-bottom:16px;font-size:14px;
+  }
+  .good{background:#DFF1E8;color:#1E6647}
+
+  a:focus-visible,button:focus-visible,.btn:focus-visible{
+    outline:2px solid var(--glaze);outline-offset:2px;
+  }
+
+  @media (max-width:860px){
+    .shell{flex-direction:column}
+    .side{width:auto;flex-direction:row;align-items:center;gap:10px;
+          overflow-x:auto;padding:12px}
+    .brand{padding:0;font-size:17px}
+    .brand small{display:none}
+    .nav{flex-direction:row;margin:0}
+    .nav a{white-space:nowrap;padding:7px 10px}
+    .side .foot{margin-left:auto}
+    .main{padding:20px 16px 48px}
+    h1{font-size:24px}
+    table{font-size:14px}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+{% block head %}{% endblock %}
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <div class="brand">ATLON<span>.</span><small>Boshqaruv paneli</small></div>
+    <nav class="nav">
+      <a href="/" class="{{ 'on' if path == '/' }}">Bosh sahifa</a>
+      <a href="/registrations" class="{{ 'on' if path.startswith('/registrations') }}">
+        Arizalar
+        {% if pending_badge %}<span class="tag num">{{ pending_badge }}</span>{% endif %}
+      </a>
+      <a href="/events" class="{{ 'on' if path.startswith('/events') }}">Tadbirlar</a>
+      <a href="/volunteers" class="{{ 'on' if path.startswith('/volunteers') }}">Volontyorlar</a>
+      <a href="/broadcast" class="{{ 'on' if path.startswith('/broadcast') }}">Xabar yuborish</a>
+      <a href="/export.xlsx">Excel yuklab olish</a>
+    </nav>
+    <div class="foot"><a href="/logout">Chiqish</a></div>
+  </aside>
+  <main class="main">
+    {% block body %}{% endblock %}
+  </main>
+</div>
+</body>
+</html>

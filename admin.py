@@ -633,22 +633,9 @@ async def _notify_applicant(
     context: ContextTypes.DEFAULT_TYPE, reg, status: str
 ) -> None:
     """Tell the applicant the outcome; on approval include event details."""
-    if status == db.APPROVED:
-        event = db.get_event(reg.event_id)
-        city = config.CITY_BY_KEY.get(event.city) if event else None
-
-        lines = [texts.APPROVED_HEADER, ""]
-        if event:
-            lines.append(f"🎉 <b>{html.escape(event.title)}</b>")
-            if event.date:
-                lines.append(f"🗓 {html.escape(event.date)}")
-            if city:
-                lines.append(f"📍 {html.escape(city['name'])}")
-            lines.append("")
-        lines.append(texts.LOCATION_NOTE)
-        message = "\n".join(lines)
-    else:
-        message = texts.REJECTED_MSG
+    approved = status == db.APPROVED
+    event = db.get_event(reg.event_id) if approved else None
+    message = texts.decision_message(approved, event)
 
     try:
         await context.bot.send_message(

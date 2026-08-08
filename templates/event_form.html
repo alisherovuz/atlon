@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Tadbirni tahrirlash' if event else 'Yangi tadbir' }} — Atlon Group{% endblock %}
+{% block body %}
+<h1>{{ 'Tadbirni tahrirlash' if event else 'Yangi tadbir' }}</h1>
+<p class="lede">
+  {% if event %}O‘zgarishlar darhol botda ko‘rinadi.
+  {% else %}Saqlaganingizdan so‘ng tanlangan viloyat obunachilariga bildirishnoma yuboriladi.{% endif %}
+</p>
+
+<div class="card pad" style="max-width:620px">
+  {% if error %}<div class="alert">{{ error }}</div>{% endif %}
+  <form method="post" action="/events/save">
+    {% if event %}<input type="hidden" name="event_id" value="{{ event.id }}">{% endif %}
+
+    <div class="field">
+      <label for="title">Tadbir nomi</label>
+      <input id="title" name="title" type="text" required
+             value="{{ event.title if event else '' }}" placeholder="Masalan: Debat turniri">
+    </div>
+
+    <div class="field">
+      <label for="city">Viloyat</label>
+      <select id="city" name="city" {{ 'disabled' if event }}>
+        {% for c in cities %}
+          <option value="{{ c.key }}" {{ 'selected' if event and event.city == c.key }}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+      {% if event %}
+        <input type="hidden" name="city" value="{{ event.city }}">
+        <div class="hint">Viloyatni o‘zgartirib bo‘lmaydi — kerak bo‘lsa yangi tadbir yarating.</div>
+      {% endif %}
+    </div>
+
+    <div class="field">
+      <label for="date">Sana va vaqt</label>
+      <input id="date" name="date" type="text"
+             value="{{ event.date if event and event.date else '' }}" placeholder="7-may, 17:00">
+      <div class="hint">Erkin matn — foydalanuvchiga xuddi shu ko‘rinishda chiqadi.</div>
+    </div>
+
+    <div class="field">
+      <label for="price">To‘lov summasi</label>
+      <input id="price" name="price" type="text"
+             value="{{ event.price if event and event.price else '' }}" placeholder="50 000 so‘m">
+      <div class="hint">Bo‘sh qoldirsangiz, to‘lov ko‘rsatilmaydi.</div>
+    </div>
+
+    <div class="field">
+      <label for="description">Qisqacha tavsif</label>
+      <textarea id="description" name="description" rows="4"
+                placeholder="Tadbir haqida bir-ikki jumla">{{ event.description if event and event.description else '' }}</textarea>
+    </div>
+
+    <button class="btn btn-primary" type="submit">{{ 'Saqlash' if event else 'Qo‘shish va xabar berish' }}</button>
+    <a class="btn" href="/events">Bekor qilish</a>
+  </form>
+</div>
+{% endblock %}

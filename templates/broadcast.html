@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Xabar yuborish — Atlon Group{% endblock %}
+{% block body %}
+<h1>Xabar yuborish</h1>
+<p class="lede">Botdan foydalanganlarga to‘g‘ridan-to‘g‘ri xabar yuboring.</p>
+
+<div class="card pad" style="max-width:620px">
+  {% if error %}<div class="alert">{{ error }}</div>{% endif %}
+  {% if sent is not none %}
+    <div class="alert good">Xabar {{ sent }} ta foydalanuvchiga yuborildi.</div>
+  {% endif %}
+
+  <form method="post" action="/broadcast">
+    <div class="field">
+      <label for="target">Kimga</label>
+      <select id="target" name="target">
+        <option value="all">Hammaga</option>
+        {% for c in cities %}
+          <option value="{{ c.key }}">{{ c.name }} — shu viloyatni tanlaganlar</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="message">Xabar matni</label>
+      <textarea id="message" name="message" rows="6" required
+                placeholder="Yubormoqchi bo‘lgan xabaringiz"></textarea>
+      <div class="hint">Oddiy matn sifatida yuboriladi.</div>
+    </div>
+
+    <button class="btn btn-primary" type="submit">Yuborish</button>
+  </form>
+</div>
+{% endblock %}

@@ -22,10 +22,39 @@ shahar guruhlariga yuborish va shahar bo‘yicha bildirishnomalar.
   foydalanuvchilarga xabar boradi.
 - **Admin panel** — `/addevent`, `/broadcast`, `/export`, `/stats`.
 
+- **Veb admin panel** — brauzerda ochiladigan panel (Railway domeni):
+  to‘lov cheklarini rasm bilan ko‘rib chiqish va bir bosishda tasdiqlash,
+  tadbirlarni qo‘shish/tahrirlash/o‘chirish, volontyorlar ro‘yxati,
+  xabar yuborish va Excel yuklab olish.
+
+## Veb admin panel
+
+Bot va panel bitta jarayonda ishlaydi, shuning uchun panelda tasdiqlangan
+ariza darhol Telegram orqali foydalanuvchiga xabar qilinadi.
+
+1. Railwayda `ADMIN_PASSWORD` o‘zgaruvchisini qo‘ying (kuchli parol).
+2. Railway service → **Settings → Networking → Generate Domain**.
+3. Shu domenni brauzerda oching va parol bilan kiring.
+
+| Sahifa | Vazifa |
+|---|---|
+| Bosh sahifa | Umumiy holat, tekshirish navbati, viloyatlar bo‘yicha obunachilar |
+| Arizalar | Chek rasmi bilan ko‘rish, **Tasdiqlash / Rad etish** |
+| Tadbirlar | Qo‘shish, tahrirlash, o‘chirish |
+| Volontyorlar | Volontyor arizalari ro‘yxati |
+| Xabar yuborish | Hammaga yoki viloyat bo‘yicha |
+| Excel | Ikkala ro‘yxatni `.xlsx` qilib yuklab olish |
+
+> Chek rasmlari server orqali uzatiladi — bot tokeni brauzerga hech qachon
+> chiqmaydi. Sessiya 12 soat amal qiladi.
+
+Telegramdagi admin buyruqlari ham ishlashda davom etadi — panel ularning
+o‘rnini bosmaydi, qo‘shimcha qiladi.
+
 ## Texnologiya
 
-Python 3.11 · `python-telegram-bot` v21 (polling) · SQLAlchemy ·
-Postgres (Railway) yoki SQLite (lokal) · openpyxl.
+Python 3.11 · `python-telegram-bot` v21 (polling) · Starlette + Uvicorn
+(veb panel) · SQLAlchemy · Postgres (Railway) yoki SQLite (lokal) · openpyxl.
 
 ## 1) Botni yaratish (@BotFather)
 
@@ -55,7 +84,7 @@ Postgres (Railway) yoki SQLite (lokal) · openpyxl.
 ```bash
 pip install -r requirements.txt
 cp .env.example .env      # va qiymatlarni to‘ldiring
-python bot.py
+python main.py            # bot + veb panel (http://localhost:8000)
 ```
 
 ## 4) Railwayda deploy
@@ -107,9 +136,12 @@ deb ko‘rsatiladi va foydalanuvchiga takroriy xabar bormaydi.
 ## Loyiha tuzilishi
 
 ```
-bot.py        — kirish nuqtasi, asosiy user flow, volontyor arizasi
-admin.py      — admin panel (tadbir, broadcast, export, stats)
-config.py     — muhit o‘zgaruvchilari, shaharlar, guruh ID lari
+main.py       — kirish nuqtasi: bot + veb panel bitta jarayonda
+bot.py        — asosiy user flow, volontyor va tadbir arizalari
+admin.py      — Telegramdagi admin buyruqlari
+webapp.py     — veb panel (Starlette): sahifalar, kirish, chek rasmi
+templates/    — panel sahifalari (HTML)
+config.py     — muhit o‘zgaruvchilari, viloyatlar, guruh ID lari
 texts.py      — barcha matnlar va tugmalar (o‘zbekcha)
 db.py         — ma’lumotlar bazasi modellari va yordamchi funksiyalar
 ```

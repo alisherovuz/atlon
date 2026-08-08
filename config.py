@@ -49,6 +49,23 @@ def _parse_ids(raw: str | None) -> list[int]:
 ADMIN_IDS: list[int] = _parse_ids(os.getenv("ADMIN_IDS"))
 
 
+# ── Web admin panel ──────────────────────────────────────────────
+# Password for the browser panel. If unset, the panel refuses every
+# login rather than falling open.
+ADMIN_PASSWORD: str = _clean(os.getenv("ADMIN_PASSWORD"))
+
+# Signs the login cookie. Defaults to a value derived from the bot token
+# so sessions stay valid across restarts without extra configuration.
+SESSION_SECRET: str = _clean(os.getenv("SESSION_SECRET")) or (
+    "atlon-session-" + BOT_TOKEN
+)
+
+# How long a browser login stays valid.
+SESSION_MAX_AGE = 60 * 60 * 12  # 12 hours
+
+PORT: int = int(_clean(os.getenv("PORT")) or 8000)
+
+
 # ── Cities ───────────────────────────────────────────────────────
 # `key` is stored in the database and used internally.
 # `name` is the label shown to users (Uzbek).
@@ -118,5 +135,9 @@ def validate() -> list[str]:
     if not ADMIN_IDS:
         problems.append(
             "ADMIN_IDS is not set — no one will be able to use the admin panel."
+        )
+    if not ADMIN_PASSWORD:
+        problems.append(
+            "ADMIN_PASSWORD is not set — the web panel will reject all logins."
         )
     return problems

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Volontyorlar — Atlon Group{% endblock %}
+{% block head %}
+<style>
+  .bio{color:var(--ink-soft);font-size:13.5px;max-width:420px}
+  @media(max-width:820px){
+    thead{display:none}
+    tbody td{display:block;border:none;padding:3px 14px}
+    tbody tr{display:block;border-bottom:1px solid var(--line);padding:12px 0}
+    tbody td[data-k]::before{content:attr(data-k) " ";color:var(--ink-soft);
+      font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+    .bio{max-width:none}
+  }
+</style>
+{% endblock %}
+{% block body %}
+<h1>Volontyorlar</h1>
+<p class="lede">Volontyorlikka yuborilgan arizalar.</p>
+
+<form method="get" action="/volunteers" style="margin-bottom:18px">
+  <select name="city" onchange="this.form.submit()" style="max-width:230px">
+    <option value="">Barcha viloyatlar</option>
+    {% for c in cities %}
+      <option value="{{ c.key }}" {{ 'selected' if c.key == city }}>{{ c.name }}</option>
+    {% endfor %}
+  </select>
+  <noscript><button class="btn btn-sm" type="submit">Filtrlash</button></noscript>
+</form>
+
+{% if rows %}
+<div class="card">
+  <table>
+    <thead>
+      <tr><th>Ism</th><th>Viloyat</th><th>Yosh</th><th>Telefon</th><th>Qiziqishlar</th><th>Bio</th><th>Sana</th></tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td data-k="Ism">
+          <strong>{{ r.full_name }}</strong>
+          {% if r.username %}<div><a href="https://t.me/{{ r.username }}" target="_blank" rel="noopener">@{{ r.username }}</a></div>{% endif %}
+        </td>
+        <td data-k="Viloyat">{{ r.city_name }}</td>
+        <td data-k="Yosh" class="num">{{ r.age or '—' }}</td>
+        <td data-k="Telefon" class="num">{{ r.phone or '—' }}</td>
+        <td data-k="Qiziqishlar">{{ r.interests or '—' }}</td>
+        <td data-k="Bio"><div class="bio">{{ r.bio or '—' }}</div></td>
+        <td data-k="Sana" class="num">{{ r.created_at.strftime('%d.%m.%Y') if r.created_at else '' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+  <div class="card empty">
+    <strong>Ariza yo‘q</strong>
+    Hozircha volontyorlikka ariza yuborilmagan.
+  </div>
+{% endif %}
+{% endblock %}

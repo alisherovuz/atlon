@@ -112,6 +112,30 @@ REJECTED_MSG = (
     "Iltimos, qaytadan urinib ko‘ring yoki adminlarga murojaat qiling."
 )
 
+def decision_message(approved: bool, event=None) -> str:
+    """The message an applicant receives once their payment is reviewed.
+
+    Shared by the Telegram admin buttons and the web panel so both send
+    exactly the same wording.
+    """
+    import html as _html
+
+    if not approved:
+        return REJECTED_MSG
+
+    lines = [APPROVED_HEADER, ""]
+    if event is not None:
+        lines.append(f"🎉 <b>{_html.escape(event.title)}</b>")
+        if event.date:
+            lines.append(f"🗓 {_html.escape(event.date)}")
+        city = config.CITY_BY_KEY.get(event.city)
+        if city:
+            lines.append(f"📍 {_html.escape(city['name'])}")
+        lines.append("")
+    lines.append(LOCATION_NOTE)
+    return "\n".join(lines)
+
+
 BTN_REGISTER = "✅ Ro‘yxatdan o‘tish"
 BTN_PREV = "⬅️ Avvalgisi"
 BTN_NEXT = "Keyingisi ➡️"

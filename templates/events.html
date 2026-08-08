@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Tadbirlar — Atlon Group{% endblock %}
+{% block head %}
+<style>
+  .head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+  .head .btn{margin-left:auto}
+  .rowacts{display:flex;gap:6px;justify-content:flex-end}
+  .rowacts form{display:inline}
+  select.jump{max-width:230px}
+  @media(max-width:700px){
+    thead{display:none}
+    tbody td{display:block;border:none;padding:3px 14px}
+    tbody tr{display:block;border-bottom:1px solid var(--line);padding:12px 0}
+    tbody td[data-k]::before{content:attr(data-k) " ";color:var(--ink-soft);
+      font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+    .rowacts{justify-content:flex-start;padding:8px 14px 0}
+  }
+</style>
+{% endblock %}
+{% block body %}
+<div class="head">
+  <div>
+    <h1>Tadbirlar</h1>
+    <p class="lede" style="margin-bottom:0">Tadbir qo‘shing, tahrirlang yoki o‘chiring.</p>
+  </div>
+  <a class="btn btn-primary" href="/events/new">Tadbir qo‘shish</a>
+</div>
+
+<form method="get" action="/events" style="margin:18px 0">
+  <select class="jump" name="city" onchange="this.form.submit()">
+    <option value="">Barcha viloyatlar</option>
+    {% for c in cities %}
+      <option value="{{ c.key }}" {{ 'selected' if c.key == city }}>{{ c.name }}</option>
+    {% endfor %}
+  </select>
+  <noscript><button class="btn btn-sm" type="submit">Filtrlash</button></noscript>
+</form>
+
+{% if rows %}
+<div class="card">
+  <table>
+    <thead>
+      <tr><th>Tadbir</th><th>Viloyat</th><th>Sana</th><th>To‘lov</th><th>Arizalar</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td data-k="Tadbir"><strong>{{ r.event.title }}</strong>
+          {% if r.event.description %}<div style="color:var(--ink-soft);font-size:13.5px">{{ r.event.description }}</div>{% endif %}
+        </td>
+        <td data-k="Viloyat">{{ r.city }}</td>
+        <td data-k="Sana">{{ r.event.date or '—' }}</td>
+        <td data-k="To‘lov" class="num">{{ r.event.price or '—' }}</td>
+        <td data-k="Arizalar" class="num">{{ r.regs }}</td>
+        <td>
+          <div class="rowacts">
+            <a class="btn btn-sm" href="/events/{{ r.event.id }}/edit">Tahrirlash</a>
+            <form method="post" action="/events/{{ r.event.id }}/delete"
+                  onsubmit="return confirm('“{{ r.event.title }}” o‘chirilsinmi? Arizalar hisobotda saqlanib qoladi.')">
+              <button class="btn btn-sm btn-no" type="submit">O‘chirish</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+  <div class="card empty">
+    <strong>Tadbir yo‘q</strong>
+    Birinchi tadbirni qo‘shing — u tanlangan viloyat obunachilariga bildirishnoma yuboradi.
+  </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Bosh sahifa — Atlon Group{% endblock %}
+{% block head %}
+<style>
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:12px;margin-bottom:26px}
+  .tile{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+        padding:15px 17px;box-shadow:var(--shadow)}
+  .tile .k{font-size:11px;text-transform:uppercase;letter-spacing:.04em;
+           color:var(--ink-soft);font-weight:600;overflow-wrap:anywhere}
+  .tile .v{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;
+           font-size:31px;line-height:1.15;margin-top:5px;letter-spacing:-.02em}
+  .tile.hot{background:var(--ink);border-color:var(--ink)}
+  .tile.hot .k{color:#93A9C0}
+  .tile.hot .v{color:var(--saffron)}
+
+  .queue{display:grid;gap:10px}
+  .qrow{display:flex;align-items:center;gap:14px;padding:13px 16px;background:var(--card);
+        border:1px solid var(--line);border-left:3px solid var(--saffron);
+        border-radius:11px;box-shadow:var(--shadow)}
+  .qrow .who{font-weight:600}
+  .qrow .meta{color:var(--ink-soft);font-size:13.5px}
+  .qrow .sp{margin-left:auto}
+  .sect{display:flex;align-items:baseline;gap:10px;margin:0 0 13px}
+  .sect h2{font-family:"Bricolage Grotesque",sans-serif;font-size:18px;margin:0;letter-spacing:-.015em}
+  .sect a{margin-left:auto;font-size:14px}
+
+  .bars{display:grid;gap:7px}
+  .bar{display:grid;grid-template-columns:132px 1fr 46px;align-items:center;gap:11px;font-size:14px}
+  .bar .track{height:8px;background:#E3E9EF;border-radius:99px;overflow:hidden}
+  .bar .fill{height:100%;background:var(--glaze);border-radius:99px}
+  .bar .n{text-align:right;color:var(--ink-soft)}
+  @media(max-width:520px){.bar{grid-template-columns:104px 1fr 38px}}
+</style>
+{% endblock %}
+{% block body %}
+<h1>Bosh sahifa</h1>
+<p class="lede">Atlon Group boti — umumiy holat.</p>
+
+<div class="tiles">
+  <div class="tile {{ 'hot' if stats.pending }}">
+    <div class="k">Tekshirilmagan</div><div class="v num">{{ stats.pending }}</div>
+  </div>
+  <div class="tile"><div class="k">Tasdiqlangan</div><div class="v num">{{ stats.approved }}</div></div>
+  <div class="tile"><div class="k">Rad etilgan</div><div class="v num">{{ stats.rejected }}</div></div>
+  <div class="tile"><div class="k">Volontyorlar</div><div class="v num">{{ stats.volunteers }}</div></div>
+  <div class="tile"><div class="k">Foydalanuvchilar</div><div class="v num">{{ stats.users }}</div></div>
+</div>
+
+<div class="sect">
+  <h2>Tekshirish navbati</h2>
+  {% if pending_total > pending|length %}
+    <a href="/registrations">Barchasi ({{ pending_total }})</a>
+  {% endif %}
+</div>
+
+{% if pending %}
+  <div class="queue">
+    {% for r in pending %}
+      {% set ev = events.get(r.event_id) %}
+      <div class="qrow">
+        <div>
+          <div class="who">{{ r.full_name }}</div>
+          <div class="meta">{{ ev.title if ev else '—' }} · {{ r.phone or '—' }}</div>
+        </div>
+        <div class="sp"><a class="btn btn-sm btn-primary" href="/registrations">Ko‘rish</a></div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card empty">
+    <strong>Navbat bo‘sh</strong>
+    Tekshirilmagan to‘lov cheki yo‘q.
+  </div>
+{% endif %}
+
+<div class="sect" style="margin-top:30px"><h2>Viloyatlar bo‘yicha obunachilar</h2></div>
+<div class="card pad bars">
+  {% for r in by_region %}
+    <div class="bar">
+      <div>{{ r.name }}</div>
+      <div class="track">
+        <div class="fill" style="width:{{ (r.count / region_max * 100) if region_max else 0 }}%"></div>
+      </div>
+      <div class="n num">{{ r.count }}</div>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}
