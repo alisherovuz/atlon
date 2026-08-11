@@ -11,9 +11,11 @@ shahar guruhlariga yuborish va shahar bo‘yicha bildirishnomalar.
 - **Tadbirlar** — shahar tanlanganda shahar tugmalari yo‘qoladi va tadbirlar
   bittalab ko‘rsatiladi (*⬅️ Avvalgisi* / *Keyingisi ➡️*), har birining tagida
   ro‘yxatdan o‘tish tugmasi bilan.
-- **Tadbirga ro‘yxatdan o‘tish** — ism-familiya, yosh, telefon, to‘lov cheki
-  (**faqat rasm ko‘rinishida**). So‘ng admin chekni tasdiqlaydi yoki rad etadi;
-  tasdiqlangach foydalanuvchiga tabrik va tadbir ma’lumotlari yuboriladi.
+- **Tadbirga ro‘yxatdan o‘tish** — ism-familiya, yosh, telefon, to‘lov cheki.
+  Chek bosqichida to‘lov summasi ko‘rsatiladi; chek **rasm (foto) yoki fayl
+  (JPG, PNG, PDF)** sifatida qabul qilinadi. So‘ng admin chekni tasdiqlaydi
+  yoki rad etadi; tasdiqlangach foydalanuvchiga tabrik va tadbir ma’lumotlari
+  yuboriladi.
 - **Volontyor arizasi** — shahar, ism-familiya, yosh, telefon (kontakt tugmasi),
   qiziqishlar, bio.
 - **Saqlash** — ma’lumotlar bazasi (Postgres/SQLite) + Excel export (`/export`).

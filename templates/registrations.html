@@ -21,8 +21,15 @@
     width:100%;height:200px;object-fit:contain;display:block;padding:8px;
   }
   .stub .shot .none{
-    display:grid;place-items:center;height:200px;
+    display:grid;place-items:center;align-content:center;gap:9px;height:200px;
     color:#7B93AC;font-size:13px;text-align:center;padding:14px;
+  }
+  .stub .shot.file{text-decoration:none}
+  .stub .shot.file:hover .doc{background:var(--glaze);border-color:var(--glaze);color:#fff}
+  .doc{
+    font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:500;
+    letter-spacing:.06em;color:#9DB2C7;border:1px solid #33506D;
+    padding:7px 13px;border-radius:8px;transition:.15s;
   }
   .stub .shot::after{ /* zoom affordance */
     content:"Kattalashtirish";position:absolute;left:0;right:0;bottom:0;
@@ -85,10 +92,19 @@
   {% for r in rows %}
     {% set ev = events.get(r.event_id) %}
     <article class="stub is-{{ r.status }}">
-      {% if r.receipt_file_id %}
+      {% set mime = r.receipt_mime or 'image/jpeg' %}
+      {% if r.receipt_file_id and mime.startswith('image/') %}
         <a class="shot" href="/receipt/{{ r.id }}" target="_blank" rel="noopener"
            aria-label="{{ r.full_name }} chekini kattalashtirib ko‘rish">
           <img src="/receipt/{{ r.id }}" alt="To‘lov cheki" loading="lazy">
+        </a>
+      {% elif r.receipt_file_id %}
+        {# A PDF or other file — can't be shown inline, so offer to open it. #}
+        <a class="shot file" href="/receipt/{{ r.id }}" target="_blank" rel="noopener">
+          <div class="none">
+            <span class="doc">PDF</span>
+            <span>Chekni ochish</span>
+          </div>
         </a>
       {% else %}
         <div class="shot"><div class="none">Chek yuborilmagan</div></div>

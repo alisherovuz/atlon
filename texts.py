@@ -76,14 +76,31 @@ EVREG_ASK_PHONE = (
     "Pastdagi <b>“📱 Raqamni yuborish”</b> tugmasidan foydalaning yoki "
     "raqamni qo‘lda yozing."
 )
-EVREG_ASK_RECEIPT = (
-    "4️⃣ To‘lov chekini yuboring.\n\n"
-    "⚠️ <b>Diqqat:</b> chek <b>faqat rasm (foto) ko‘rinishida</b> qabul qilinadi. "
-    "Fayl, hujjat yoki matn ko‘rinishida yuborilgan cheklar qabul qilinmaydi."
-)
+def receipt_prompt(price: str | None = None) -> str:
+    """Step 4 of the event form, showing what the applicant must pay."""
+    import html as _html
+
+    amount = (
+        f"💰 <b>To‘lov summasi:</b> {_html.escape(price)}\n\n"
+        if price
+        else ""
+    )
+    return (
+        "4️⃣ To‘lov chekini yuboring.\n\n"
+        + amount
+        + "📎 Chekni <b>rasm (foto)</b> yoki <b>fayl</b> ko‘rinishida "
+        "yuborishingiz mumkin (JPG, PNG, PDF).\n\n"
+        "⚠️ Matn ko‘rinishida yozilgan cheklar qabul qilinmaydi."
+    )
+
+
 EVREG_RECEIPT_INVALID = (
-    "❗️ Chek <b>faqat rasm (foto) ko‘rinishida</b> qabul qilinadi.\n\n"
-    "Iltimos, chek rasmini foto sifatida yuboring (fayl/hujjat sifatida emas)."
+    "❗️ Chek <b>rasm (foto)</b> yoki <b>fayl</b> ko‘rinishida yuborilishi kerak.\n\n"
+    "Iltimos, chek rasmini yoki PDF faylini yuboring."
+)
+EVREG_RECEIPT_BAD_FILE = (
+    "❗️ Bu turdagi fayl qabul qilinmaydi.\n\n"
+    "Faqat rasm (JPG, PNG) yoki PDF fayl yuboring."
 )
 EVREG_DONE = (
     "✅ <b>Ariza yuborildi!</b>\n\n"

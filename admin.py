@@ -668,13 +668,18 @@ async def pending_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         )
         try:
             if reg.receipt_file_id:
-                await context.bot.send_photo(
+                kwargs = dict(
                     chat_id=update.effective_user.id,
-                    photo=reg.receipt_file_id,
                     caption=caption,
                     parse_mode=ParseMode.HTML,
                     reply_markup=texts.review_keyboard(reg.id),
                 )
+                if (reg.receipt_kind or "photo") == "photo":
+                    await context.bot.send_photo(photo=reg.receipt_file_id, **kwargs)
+                else:
+                    await context.bot.send_document(
+                        document=reg.receipt_file_id, **kwargs
+                    )
             else:
                 await update.message.reply_text(
                     caption,

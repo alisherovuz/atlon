@@ -218,7 +218,10 @@ async def reject(request):
 
 @login_required
 async def receipt_image(request):
-    """Stream a receipt photo from Telegram without exposing the token."""
+    """Stream a receipt from Telegram without exposing the bot token.
+
+    Handles both photos and uploaded files (images or PDFs).
+    """
     reg_id = int(request.path_params["reg_id"])
     reg = db.get_registration(reg_id)
     if reg is None or not reg.receipt_file_id:
@@ -231,10 +234,15 @@ async def receipt_image(request):
         logger.warning("Could not fetch receipt for %s: %s", reg_id, exc)
         return Response("Chekni yuklab bo‘lmadi", status_code=502)
 
+    # Rows created before file receipts existed have no stored mime.
+    media_type = reg.receipt_mime or "image/jpeg"
     return Response(
         bytes(data),
-        media_type="image/jpeg",
-        headers={"Cache-Control": "private, max-age=3600"},
+        media_type=media_type,
+        headers={
+            "Cache-Control": "private, max-age=3600",
+            "Content-Disposition": f'inline; filename="chek-{reg_id}"',
+        },
     )
 
 

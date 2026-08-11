@@ -112,7 +112,11 @@ class EventRegistration(Base):
     full_name = mapped_column(String(256))
     age = mapped_column(Integer, nullable=True)
     phone = mapped_column(String(64), nullable=True)
-    receipt_file_id = mapped_column(String(256), nullable=True)  # Telegram photo id
+    receipt_file_id = mapped_column(String(256), nullable=True)  # Telegram file id
+    # "photo" or "document". NULL on rows created before files were
+    # accepted — those were always photos.
+    receipt_kind = mapped_column(String(16), nullable=True)
+    receipt_mime = mapped_column(String(128), nullable=True)
     status = mapped_column(String(16), default=PENDING, index=True)
     reviewed_by = mapped_column(BigInteger, nullable=True)
     reviewed_at = mapped_column(DateTime, nullable=True)
@@ -136,7 +140,11 @@ def _ensure_columns() -> None:
             "price": "VARCHAR(64)",
             # DEFAULT 1 backfills existing rows as visible.
             "is_active": "INTEGER DEFAULT 1",
-        }
+        },
+        "event_registrations": {
+            "receipt_kind": "VARCHAR(16)",
+            "receipt_mime": "VARCHAR(128)",
+        },
     }
 
     for table, columns in wanted.items():
@@ -346,6 +354,8 @@ def add_registration(data: dict) -> int:
             age=data.get("age"),
             phone=data.get("phone"),
             receipt_file_id=data.get("receipt_file_id"),
+            receipt_kind=data.get("receipt_kind", "photo"),
+            receipt_mime=data.get("receipt_mime"),
             status=PENDING,
         )
         s.add(reg)

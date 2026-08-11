@@ -442,10 +442,13 @@ async def evreg_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         phone = update.message.contact.phone_number
     else:
         phone = update.message.text.strip()
-    context.user_data["evreg"]["phone"] = phone
+    data = context.user_data["evreg"]
+    data["phone"] = phone
 
+    # Remind them of the amount right where they need to pay it.
+    event = db.get_event(data["event_id"])
     await update.message.reply_text(
-        texts.EVREG_ASK_RECEIPT,
+        texts.receipt_prompt(event.price if event else None),
         reply_markup=ReplyKeyboardRemove(),
         parse_mode=ParseMode.HTML,
     )
@@ -453,11 +456,16 @@ async def evreg_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
 
 async def evreg_receipt_invalid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Anything that is not a photo is rejected, with an explanation."""
+    """Text, stickers, voice notes and the like are refused."""
     await update.message.reply_text(
         texts.EVREG_RECEIPT_INVALID, parse_mode=ParseMode.HTML
     )
     return REG_RECEIPT
+
+
+# File types a receipt can plausibly be.
+ALLOWED_RECEIPT_MIME_PREFIXES = ("image/",)
+ALLOWED_RECEIPT_MIME = ("application/pdf",)
 
 
 async def evreg_receipt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -465,8 +473,24 @@ async def evreg_receipt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     if not data:
         return ConversationHandler.END
 
-    # photo is a list of sizes; the last one is the highest resolution.
-    data["receipt_file_id"] = update.message.photo[-1].file_id
+    message = update.message
+    if message.photo:
+        # photo is a list of sizes; the last one is the highest resolution.
+        data["receipt_file_id"] = message.photo[-1].file_id
+        data["receipt_kind"] = "photo"
+        data["receipt_mime"] = "image/jpeg"
+    else:
+        doc = message.document
+        mime = (doc.mime_type or "").lower()
+        allowed = mime.startswith(ALLOWED_RECEIPT_MIME_PREFIXES) or mime in ALLOWED_RECEIPT_MIME
+        if not allowed:
+            await message.reply_text(
+                texts.EVREG_RECEIPT_BAD_FILE, parse_mode=ParseMode.HTML
+            )
+            return REG_RECEIPT
+        data["receipt_file_id"] = doc.file_id
+        data["receipt_kind"] = "document"
+        data["receipt_mime"] = mime
 
     user = update.effective_user
     data["user_id"] = user.id
@@ -549,15 +573,22 @@ async def send_registration_for_review(
         )
         return
 
+    is_photo = data.get("receipt_kind", "photo") == "photo"
     for admin_id in config.ADMIN_IDS:
         try:
-            await context.bot.send_photo(
+            kwargs = dict(
                 chat_id=admin_id,
-                photo=data["receipt_file_id"],
                 caption=caption,
                 parse_mode=ParseMode.HTML,
                 reply_markup=texts.review_keyboard(reg_id),
             )
+            if is_photo:
+                await context.bot.send_photo(photo=data["receipt_file_id"], **kwargs)
+            else:
+                # A file receipt must go back out as a document, not a photo.
+                await context.bot.send_document(
+                    document=data["receipt_file_id"], **kwargs
+                )
         except Exception as exc:  # noqa: BLE001
             logger.error("Could not send registration %s to admin %s: %s", reg_id, admin_id, exc)
 
@@ -621,10 +652,13 @@ def build_application() -> Application:
                 )
             ],
             REG_RECEIPT: [
-                MessageHandler(filters.PHOTO, evreg_receipt),
-                # Documents, text, stickers, etc. are refused with an
+                MessageHandler(filters.PHOTO | filters.Document.ALL, evreg_receipt),
+                # Text, stickers, voice, etc. are refused with an
                 # explanation and the user stays on this step.
-                MessageHandler(~filters.PHOTO & ~filters.COMMAND, evreg_receipt_invalid),
+                MessageHandler(
+                    ~(filters.PHOTO | filters.Document.ALL) & ~filters.COMMAND,
+                    evreg_receipt_invalid,
+                ),
             ],
         },
         fallbacks=[
