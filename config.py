@@ -49,6 +49,12 @@ def _parse_ids(raw: str | None) -> list[int]:
 ADMIN_IDS: list[int] = _parse_ids(os.getenv("ADMIN_IDS"))
 
 
+# ── Payment ──────────────────────────────────────────────────────
+# Card applicants transfer the event fee to. Shown at the receipt step.
+# Kept here rather than in code so it can be changed without a deploy.
+PAYMENT_CARD: str = _clean(os.getenv("PAYMENT_CARD"))
+
+
 # ── Web admin panel ──────────────────────────────────────────────
 # Password for the browser panel. If unset, the panel refuses every
 # login rather than falling open.
@@ -139,5 +145,9 @@ def validate() -> list[str]:
     if not ADMIN_PASSWORD:
         problems.append(
             "ADMIN_PASSWORD is not set — the web panel will reject all logins."
+        )
+    if not PAYMENT_CARD:
+        problems.append(
+            "PAYMENT_CARD is not set — applicants won't see a card to pay to."
         )
     return problems

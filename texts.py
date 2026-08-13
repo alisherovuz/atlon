@@ -77,21 +77,34 @@ EVREG_ASK_PHONE = (
     "raqamni qo‘lda yozing."
 )
 def receipt_prompt(price: str | None = None) -> str:
-    """Step 4 of the event form, showing what the applicant must pay."""
+    """Step 4 of the event form: how much to pay, where, and what to send back.
+
+    The card number is wrapped in <code> so Telegram lets the applicant tap
+    to copy it instead of transcribing 16 digits by hand.
+    """
     import html as _html
 
-    amount = (
-        f"💰 <b>To‘lov summasi:</b> {_html.escape(price)}\n\n"
-        if price
-        else ""
+    parts = ["4️⃣ <b>To‘lovni amalga oshiring</b>\n"]
+
+    if price:
+        parts.append(f"💰 <b>To‘lov summasi:</b> {_html.escape(price)}\n")
+
+    if config.PAYMENT_CARD:
+        parts.append(
+            "💳 <b>To‘lov uchun karta:</b>\n"
+            f"<code>{_html.escape(config.PAYMENT_CARD)}</code>\n"
+        )
+
+    parts.append(
+        "📎 To‘lovni amalga oshirgach, chekni <b>rasm (foto)</b> yoki "
+        "<b>fayl</b> ko‘rinishida yuborishingiz mumkin (JPG, PNG, PDF).\n"
     )
-    return (
-        "4️⃣ To‘lov chekini yuboring.\n\n"
-        + amount
-        + "📎 Chekni <b>rasm (foto)</b> yoki <b>fayl</b> ko‘rinishida "
-        "yuborishingiz mumkin (JPG, PNG, PDF).\n\n"
-        "⚠️ Matn ko‘rinishida yozilgan cheklar qabul qilinmaydi."
+    parts.append(
+        "⚠️ <b>Muhim:</b> Faqat to‘lov amalga oshirilganini tasdiqlovchi chek "
+        "qabul qilinadi. Matn ko‘rinishidagi chek yoki to‘lov ma’lumotlari "
+        "qabul qilinmaydi."
     )
+    return "\n".join(parts)
 
 
 EVREG_RECEIPT_INVALID = (
