@@ -177,6 +177,9 @@ def format_event_card(event, city_name: str, index: int, total: int) -> str:
         lines.append(f"\n{_e(event.description)}")
     if event.price:
         lines.append(f"\n💰 <b>To‘lov:</b> {_e(event.price)}")
+    # Same on every event, so it comes from the configured channel rather
+    # than being retyped into each event's description.
+    lines.append(f"\n{texts.channel_note()}")
     return "\n".join(lines)
 
 

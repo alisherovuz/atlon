@@ -49,14 +49,17 @@ ABOUT = (
     "• <i>Ishtirokchi (participant)</i> sifatida: yangi bilim, tajriba, "
     "tanishuvlar va tadbirlarda qatnashish imkoniyati.\n"
     "• <i>Volontyor (volunteer)</i> sifatida: tashkilotchilik tajribasi, "
-    "sertifikat, jamoada ishlash va yetakchilik ko‘nikmalari.\n\n"
+    "rasmiy tan olingan tashkilotdan <b>sertifikat</b> va "
+    "<b>recommendation letter</b>, jamoada ishlash va yetakchilik "
+    "ko‘nikmalari.\n\n"
     "<b>🧭 Yo‘nalishlar</b>\n"
     "• 🏅 Sport\n"
     "• 🗣 Debate (munozara)\n"
     "• 🧠 Intellektual o‘yinlar\n"
     "• 🎬 Media\n"
     "• va boshqa ko‘plab yo‘nalishlar\n\n"
-    "Biz bilan birga o‘s! 🚀"
+    "Biz bilan birga rivojlan — sertifikat va recommendation letterni "
+    "qo‘lga kirit! 🚀"
 )
 
 EVENTS_PICK_CITY = "📍 Tadbirlarni ko‘rish uchun shaharni tanlang:"
@@ -136,6 +139,30 @@ APPROVED_HEADER = (
     "tasdiqlandi. ✅"
 )
 LOCATION_NOTE = "ℹ️ Aniq lokatsiya telegram kanalga yuboriladi."
+
+
+def _channel_link(label: str) -> str:
+    """`label` as a link to the channel, or plain text if none is set."""
+    import html as _html
+
+    if not config.CHANNEL_URL:
+        return label
+    return f'<a href="{_html.escape(config.CHANNEL_URL, quote=True)}">{label}</a>'
+
+
+def channel_note() -> str:
+    """Footer shown under every event — same on all of them, so it lives
+    here rather than being retyped into each event's description."""
+    return "ℹ️ To‘liq ma’lumot " + _channel_link("telegram kanalimizda")
+
+
+def location_note() -> str:
+    """Same note as LOCATION_NOTE, but with the channel made clickable."""
+    return (
+        "ℹ️ Aniq lokatsiya "
+        + _channel_link("telegram kanalga")
+        + " yuboriladi."
+    )
 REJECTED_MSG = (
     "❌ <b>Afsuski, arizangiz tasdiqlanmadi.</b>\n\n"
     "To‘lov cheki tasdiqlanmadi yoki noto‘g‘ri yuborilgan bo‘lishi mumkin. "
@@ -162,7 +189,7 @@ def decision_message(approved: bool, event=None) -> str:
         if city:
             lines.append(f"📍 {_html.escape(city['name'])}")
         lines.append("")
-    lines.append(LOCATION_NOTE)
+    lines.append(location_note())
     return "\n".join(lines)
 
 
@@ -188,7 +215,7 @@ VOL_ASK_PHONE = (
 )
 VOL_ASK_INTERESTS = (
     "5️⃣ Qiziqishlaringiz qaysi yo‘nalishlarda?\n"
-    "(masalan: media, tashkilotchilik, sport, debate ...)"
+    "(masalan: media, coordinator, tashkilotchilik, speaker, ...)"
 )
 VOL_ASK_BIO = (
     "6️⃣ O‘zingiz haqingizda qisqacha yozing:\n"
