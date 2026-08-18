@@ -16,7 +16,7 @@ import config
 # ── Static copy ──────────────────────────────────────────────────
 
 WELCOME = (
-    "👋 <b>Assalomu alaykum va Atlon Group botiga xush kelibsiz!</b>\n\n"
+    "👋 <b>Assalomu alaykum! Atlon Group botiga xush kelibsiz!</b>\n\n"
     "Bu bot orqali siz:\n"
     "• Loyihamiz haqida ma’lumot olasiz\n"
     "• Shaharlar bo‘yicha tadbirlarni ko‘rasiz\n"
