@@ -284,16 +284,64 @@ async def vol_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data["application"]["phone"] = phone
     from telegram import ReplyKeyboardRemove
 
+    # Two messages: the first clears the contact keyboard (a reply keyboard
+    # and an inline keyboard can't travel on the same message), the second
+    # carries the direction buttons.
     await update.message.reply_text(
-        texts.VOL_ASK_INTERESTS, reply_markup=ReplyKeyboardRemove()
+        f"📞 Qabul qilindi: {_e(phone)}",
+        reply_markup=ReplyKeyboardRemove(),
+        parse_mode=ParseMode.HTML,
+    )
+    await update.message.reply_text(
+        texts.VOL_ASK_INTERESTS,
+        reply_markup=texts.interests_keyboard(),
+        parse_mode=ParseMode.HTML,
     )
     return INTERESTS
 
 
+async def vol_interests_btn(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """A direction button was tapped: record it and move straight on.
+
+    Storing the canonical label keeps every application spelled the same,
+    which is what makes filtering them worthwhile.
+    """
+    query = update.callback_query
+    if "application" not in context.user_data:
+        await query.answer("Ariza yakunlangan.", show_alert=True)
+        return ConversationHandler.END
+
+    item = config.INTEREST_BY_KEY.get(query.data.split(":", 1)[1])
+    if item is None:
+        await query.answer()
+        return INTERESTS
+
+    await query.answer(item["label"])
+    context.user_data["application"]["interests"] = item["label"]
+
+    # Replace the buttons with the choice, so it reads as recorded and
+    # can't be tapped twice.
+    await query.edit_message_text(
+        texts.VOL_INTEREST_CHOSEN.format(label=_e(item["label"])),
+        parse_mode=ParseMode.HTML,
+    )
+    await query.message.reply_text(texts.VOL_ASK_BIO)
+    return BIO
+
+
 async def vol_interests(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Typed instead of tapped — accepted, for anything not on the list."""
     context.user_data["application"]["interests"] = update.message.text.strip()
     await update.message.reply_text(texts.VOL_ASK_BIO)
     return BIO
+
+
+async def stale_interest_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """A direction button tapped after the form was finished or abandoned."""
+    await update.callback_query.answer(
+        "Bu ariza yakunlangan. Yangi ariza uchun menyudan boshlang.",
+        show_alert=True,
+    )
 
 
 async def vol_bio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -630,7 +678,10 @@ def build_application() -> Application:
                     (filters.TEXT & ~filters.COMMAND) | filters.CONTACT, vol_phone
                 )
             ],
-            INTERESTS: [MessageHandler(filters.TEXT & ~filters.COMMAND, vol_interests)],
+            INTERESTS: [
+                CallbackQueryHandler(vol_interests_btn, pattern=r"^vint:"),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, vol_interests),
+            ],
             BIO: [MessageHandler(filters.TEXT & ~filters.COMMAND, vol_bio)],
         },
         fallbacks=[
@@ -685,6 +736,11 @@ def build_application() -> Application:
     application.add_handler(CallbackQueryHandler(events_pick_city, pattern="^events$"))
     application.add_handler(CallbackQueryHandler(show_event_card, pattern="^evcity:"))
     application.add_handler(CallbackQueryHandler(show_event_card, pattern=r"^ev:"))
+    # Registered after the conversation, so it only catches taps on
+    # buttons left over from a form that is no longer running.
+    application.add_handler(
+        CallbackQueryHandler(stale_interest_button, pattern=r"^vint:")
+    )
 
     register_admin_handlers(application)
 

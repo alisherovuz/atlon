@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Takliflar — Atlon Group{% endblock %}
+{% block head %}
+<style>
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:12px;margin-bottom:24px}
+  .tile{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+        padding:15px 17px;box-shadow:var(--shadow)}
+  .tile .k{font-size:11px;text-transform:uppercase;letter-spacing:.04em;
+           color:var(--ink-soft);font-weight:600;overflow-wrap:anywhere}
+  .tile .v{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;
+           font-size:31px;line-height:1.15;margin-top:5px;letter-spacing:-.02em}
+  .rank{color:var(--ink-soft);font-variant-numeric:tabular-nums;width:24px}
+  .prog{display:flex;align-items:center;gap:9px;min-width:150px}
+  .prog .track{flex:1;height:7px;background:#E3E9EF;border-radius:99px;overflow:hidden}
+  .prog .fill{height:100%;border-radius:99px;background:var(--glaze)}
+  .prog .fill.done{background:var(--jade)}
+  @media(max-width:760px){
+    thead{display:none}
+    tbody td{display:block;border:none;padding:3px 14px}
+    tbody tr{display:block;border-bottom:1px solid var(--line);padding:12px 0}
+    tbody td[data-k]::before{content:attr(data-k) " ";color:var(--ink-soft);
+      font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+  }
+</style>
+{% endblock %}
+{% block body %}
+<h1>Takliflar</h1>
+<p class="lede">
+  Kim nechta odamni olib kelgani. Taklif faqat taklif qilingan inson
+  kanalga <b>obuna bo‘lgandan keyin</b> hisoblanadi.
+</p>
+
+<div class="tiles">
+  <div class="tile"><div class="k">Sertifikat uchun</div><div class="v num">{{ threshold }}</div></div>
+  <div class="tile"><div class="k">Shartni bajarganlar</div><div class="v num">{{ earned }}</div></div>
+  <div class="tile"><div class="k">Berilgan sertifikat</div><div class="v num">{{ issued }}</div></div>
+</div>
+
+{% if rows %}
+<div class="card">
+  <table>
+    <thead>
+      <tr><th></th><th>Ism</th><th>Taklif qilganlar</th><th>Sertifikat</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      {% set done = r.count >= threshold %}
+      <tr>
+        <td class="rank num">{{ loop.index }}</td>
+        <td data-k="Ism">
+          <strong>{{ r.full_name }}</strong>
+          {% if r.username %}
+            <div><a href="https://t.me/{{ r.username }}" target="_blank" rel="noopener">@{{ r.username }}</a></div>
+          {% else %}
+            <div class="num" style="color:var(--ink-soft);font-size:13px">{{ r.user_id }}</div>
+          {% endif %}
+        </td>
+        <td data-k="Taklif qilganlar">
+          <div class="prog">
+            <div class="track">
+              <div class="fill {{ 'done' if done }}"
+                   style="width:{{ [r.count / threshold * 100, 100]|min }}%"></div>
+            </div>
+            <span class="num">{{ r.count }}</span>
+          </div>
+        </td>
+        <td data-k="Sertifikat">
+          {% if r.cert_serial %}
+            <span class="pill pill-approved">Berilgan</span>
+            <div class="num" style="font-size:12.5px;color:var(--ink-soft)">{{ r.cert_serial }}</div>
+          {% elif done %}
+            <span class="pill pill-pending">Tayyorlanmoqda</span>
+          {% else %}
+            <span style="color:var(--ink-soft)">—</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if done %}
+            <a class="btn btn-sm" href="/certificate/{{ r.user_id }}">Sertifikatni yuklash</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+  <div class="card empty">
+    <strong>Hali takliflar yo‘q</strong>
+    Foydalanuvchilar menyudagi “Do‘stlarni taklif qilish” tugmasi orqali
+    o‘z havolasini oladi.
+  </div>
+{% endif %}
+{% endblock %}

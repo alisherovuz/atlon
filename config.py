@@ -111,6 +111,27 @@ CITIES: list[dict] = [
 # How many region buttons to place per keyboard row.
 CITY_COLUMNS = 2
 
+
+# ── Volunteer directions ─────────────────────────────────────────
+# Offered as buttons in the volunteer form. Tapping one stores `label`
+# exactly, so every application uses the same spelling and the list can
+# be filtered reliably — that is the whole point of the buttons.
+# To add a direction, add a line here; the keyboard follows automatically.
+INTERESTS: list[dict] = [
+    {"key": "sport", "emoji": "🏅", "label": "Sport"},
+    {"key": "debate", "emoji": "🗣", "label": "Debate"},
+    {"key": "intellect", "emoji": "🧠", "label": "Intellektual o‘yinlar"},
+    {"key": "media", "emoji": "🎬", "label": "Media"},
+    {"key": "organizer", "emoji": "📋", "label": "Tashkilotchilik"},
+    {"key": "coordinator", "emoji": "🤝", "label": "Koordinator"},
+    {"key": "speaker", "emoji": "🎤", "label": "Speaker"},
+    {"key": "design", "emoji": "🎨", "label": "Dizayn"},
+]
+
+INTEREST_BY_KEY: dict[str, dict] = {i["key"]: i for i in INTERESTS}
+
+INTEREST_COLUMNS = 2
+
 CITY_BY_KEY: dict[str, dict] = {c["key"]: c for c in CITIES}
 CITY_BY_NAME: dict[str, dict] = {c["name"]: c for c in CITIES}
 

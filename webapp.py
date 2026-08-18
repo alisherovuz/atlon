@@ -332,10 +332,27 @@ async def event_delete(request):
 async def volunteers(request):
     rows = db.all_applications()
     rows.reverse()
+
     city = request.query_params.get("city", "")
     if city:
         rows = [r for r in rows if r.city == city]
-    return _render(request, "volunteers.html", rows=rows, city=city)
+
+    # Because the form stores a canonical label, a plain match is enough.
+    interest = request.query_params.get("interest", "")
+    if interest:
+        rows = [
+            r for r in rows
+            if interest.lower() in (r.interests or "").lower()
+        ]
+
+    return _render(
+        request,
+        "volunteers.html",
+        rows=rows,
+        city=city,
+        interest=interest,
+        interests=config.INTERESTS,
+    )
 
 
 # ── Broadcast ────────────────────────────────────────────────────

@@ -17,14 +17,26 @@
 <h1>Volontyorlar</h1>
 <p class="lede">Volontyorlikka yuborilgan arizalar.</p>
 
-<form method="get" action="/volunteers" style="margin-bottom:18px">
+<form method="get" action="/volunteers" style="margin-bottom:18px;display:flex;gap:8px;flex-wrap:wrap">
   <select name="city" onchange="this.form.submit()" style="max-width:230px">
     <option value="">Barcha viloyatlar</option>
     {% for c in cities %}
       <option value="{{ c.key }}" {{ 'selected' if c.key == city }}>{{ c.name }}</option>
     {% endfor %}
   </select>
+  <select name="interest" onchange="this.form.submit()" style="max-width:230px">
+    <option value="">Barcha yo‘nalishlar</option>
+    {% for i in interests %}
+      <option value="{{ i.label }}" {{ 'selected' if i.label == interest }}>{{ i.emoji }} {{ i.label }}</option>
+    {% endfor %}
+  </select>
   <noscript><button class="btn btn-sm" type="submit">Filtrlash</button></noscript>
+  {% if city or interest %}
+    <a class="btn btn-sm" href="/volunteers">Tozalash</a>
+  {% endif %}
+  <span style="align-self:center;color:var(--ink-soft);font-size:14px">
+    {{ rows|length }} ta ariza
+  </span>
 </form>
 
 {% if rows %}

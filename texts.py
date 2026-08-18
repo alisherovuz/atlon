@@ -214,9 +214,23 @@ VOL_ASK_PHONE = (
     "raqamni qo‘lda yozing."
 )
 VOL_ASK_INTERESTS = (
-    "5️⃣ Qiziqishlaringiz qaysi yo‘nalishlarda?\n"
-    "(masalan: media, coordinator, tashkilotchilik, speaker, ...)"
+    "5️⃣ <b>Qiziqishlaringiz qaysi yo‘nalishda?</b>\n\n"
+    "Quyidagilardan birini tanlang 👇\n"
+    "Ro‘yxatda yo‘q bo‘lsa — shunchaki yozib yuboring."
 )
+
+VOL_INTEREST_CHOSEN = "✅ Yo‘nalish: <b>{label}</b>"
+
+
+def interests_keyboard() -> InlineKeyboardMarkup:
+    """Direction buttons for the volunteer form."""
+    buttons = [
+        InlineKeyboardButton(
+            f"{i['emoji']} {i['label']}", callback_data=f"vint:{i['key']}"
+        )
+        for i in config.INTERESTS
+    ]
+    return InlineKeyboardMarkup(chunk(buttons, config.INTEREST_COLUMNS))
 VOL_ASK_BIO = (
     "6️⃣ O‘zingiz haqingizda qisqacha yozing:\n"
     "• tajribangiz\n"
