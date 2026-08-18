@@ -68,9 +68,84 @@ async def admin_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         "/export — arizalarni Excel faylga yuklab olish\n"
         "/stats — statistika\n"
         "/id — chat ID ni bilish\n"
+        "/checkchannel — obuna tekshiruvini diagnostika qilish\n"
         "/bekor — jarayonni bekor qilish",
         parse_mode=ParseMode.HTML,
     )
+
+
+async def check_channel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Diagnose the subscription gate.
+
+    The gate deliberately lets people through when it can't check, so a
+    misconfiguration is invisible to users. This reports what is actually
+    wrong instead.
+    """
+    if not await _guard(update):
+        return
+
+    lines = ["🔍 <b>Obuna tekshiruvi diagnostikasi</b>\n"]
+
+    if not config.CHANNEL_USERNAME:
+        lines += [
+            "❌ <b>CHANNEL_USERNAME o‘rnatilmagan.</b>\n",
+            "Shu sababli obuna so‘ralmayapti — hamma to‘g‘ridan-to‘g‘ri "
+            "menyuga o‘tib ketyapti.\n",
+            "<b>Yechim:</b> Railway → Variables → "
+            "<code>CHANNEL_USERNAME = @kanal_username</code>",
+        ]
+        await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML)
+        return
+
+    lines.append(f"📢 Kanal: <code>{html.escape(config.CHANNEL_USERNAME)}</code>\n")
+
+    # 1. Can the bot see the channel at all?
+    try:
+        chat = await context.bot.get_chat(config.CHANNEL_USERNAME)
+        lines.append(f"✅ Kanal topildi: <b>{html.escape(chat.title or '—')}</b>")
+    except Exception as exc:  # noqa: BLE001
+        lines += [
+            f"❌ Kanal topilmadi: <code>{html.escape(str(exc))}</code>\n",
+            "Username to‘g‘ri yozilganmi? Bot kanalga qo‘shilganmi?",
+        ]
+        await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML)
+        return
+
+    # 2. Is the bot an admin? Telegram only allows membership lookups for
+    #    arbitrary users if the bot administers the channel.
+    bot_ok = False
+    try:
+        me = await context.bot.get_me()
+        m = await context.bot.get_chat_member(config.CHANNEL_USERNAME, me.id)
+        if m.status in ("administrator", "creator", "owner"):
+            lines.append("✅ Bot kanalda <b>admin</b>")
+            bot_ok = True
+        else:
+            lines += [
+                f"❌ Bot admin emas (holati: <code>{m.status}</code>)\n",
+                "<b>Yechim:</b> Kanal → Administrators → botni admin qiling.",
+            ]
+    except Exception as exc:  # noqa: BLE001
+        lines += [
+            f"❌ Bot holatini aniqlab bo‘lmadi: <code>{html.escape(str(exc))}</code>\n",
+            "Odatda bu bot kanalga admin qilib qo‘shilmaganini bildiradi.",
+        ]
+
+    # 3. Live check against the admin running the command.
+    try:
+        m = await context.bot.get_chat_member(
+            config.CHANNEL_USERNAME, update.effective_user.id
+        )
+        lines.append(f"\n👤 Sizning holatingiz: <code>{m.status}</code>")
+        if bot_ok:
+            lines.append("✅ <b>Obuna tekshiruvi ishlayapti.</b>")
+    except Exception as exc:  # noqa: BLE001
+        lines += [
+            f"\n❌ Tekshirib bo‘lmadi: <code>{html.escape(str(exc))}</code>",
+            "⚠️ Shu sababli bot hammani o‘tkazib yuboryapti.",
+        ]
+
+    await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML)
 
 
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -722,6 +797,7 @@ async def admin_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 def register_admin_handlers(application: Application) -> None:
     application.add_handler(CommandHandler("admin", admin_help))
     application.add_handler(CommandHandler("stats", stats))
+    application.add_handler(CommandHandler("checkchannel", check_channel))
     application.add_handler(CommandHandler("export", export))
     application.add_handler(CommandHandler("pending", pending_list))
     application.add_handler(
